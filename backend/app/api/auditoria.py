@@ -37,3 +37,24 @@ def estadisticas(db: Session = Depends(get_db), _: Usuario = Depends(requiere_ro
         "atenciones_borrador": contar(Atencion, Atencion.estado == "borrador"),
         "bloques_ledger": contar(BloqueLedger),
     }
+
+
+@router.post("/anclar")
+def anclar_ledger(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("auditor", "admin"))):
+    from app.services.anclaje import anclar
+
+    try:
+        a = anclar(db)
+    except ValueError as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(409, str(exc))
+    return {"id": a.id, "bloque": a.bloque_id, "hash": a.hash_raiz, "proveedor": a.proveedor, "estado": a.estado,
+            "detalle": a.detalle}
+
+
+@router.get("/anclajes")
+def anclajes(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("auditor", "admin"))):
+    from app.services.anclaje import verificar_anclas
+
+    return verificar_anclas(db)
