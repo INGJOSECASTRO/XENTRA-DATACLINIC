@@ -26,6 +26,7 @@ const router = createRouter({
     { path: '/facturacion', component: v('FacturacionView'), meta: { roles: ['facturacion', 'admin', 'auditor'] } },
     { path: '/reportes', component: v('ReportesView'), meta: { roles: ['admin', 'auditor', 'medico'] } },
     { path: '/auditoria', component: v('AuditoriaView'), meta: { roles: ['auditor', 'admin'] } },
+    { path: '/rips', component: v('RipsView'), meta: { roles: ['facturacion', 'admin'] } },
     { path: '/bi', component: v('BIView') },
     { path: '/modulos', component: v('ModulosView') },
     { path: '/soporte', component: v('SoporteView') },

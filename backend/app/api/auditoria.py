@@ -58,3 +58,16 @@ def anclajes(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("a
     from app.services.anclaje import verificar_anclas
 
     return verificar_anclas(db)
+
+
+@router.get("/estado-cadena")
+def estado_cadena(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*PERSONAL))):
+    """Resumen de la seguridad blockchain visible para todo el personal (sin detalles de los bloques)."""
+    from app.models_ext import AnclajeLedger
+
+    r = verificar_cadena(db)
+    ancla = db.scalars(select(AnclajeLedger).order_by(AnclajeLedger.id.desc()).limit(1)).first()
+    firmadas = db.scalar(select(func.count()).select_from(Atencion).where(Atencion.estado == "firmada")) or 0
+    return {"valida": r["valida"], "total_bloques": r["total_bloques"], "folios_sellados": firmadas,
+            "ultimo_anclaje": ancla.creado_en if ancla else None,
+            "detalle": r.get("detalle")}

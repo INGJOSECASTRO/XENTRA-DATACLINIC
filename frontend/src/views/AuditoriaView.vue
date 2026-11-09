@@ -30,7 +30,7 @@ onMounted(() => { cargar(); cargarAnclajes() })
 </script>
 
 <template>
-  <h1>Auditoría · Libro mayor inmutable</h1>
+  <h1>Seguridad blockchain · Libro mayor inmutable</h1>
   <div class="tarjeta">
     <div class="fila entre">
       <p class="suave" style="max-width: 640px; margin: 0">

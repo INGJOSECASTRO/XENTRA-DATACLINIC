@@ -169,3 +169,9 @@ def test_rda_perfiles_oficiales_y_dispensacion(client, medico, auditor, jose):
     assert recurso["quantity"]["value"] == 9 and recurso["authorizingPrescription"] and recurso["contained"][0]["batch"]
     resumen = client.get("/api/rda/resumen", headers=auditor).json()
     assert resumen["plazos"]["rda_dispensacion"]["obligatorio_desde"] == "2027-03-01"
+
+
+def test_estado_blockchain_visible_para_personal(client, medico, facturacion):
+    for h in (medico, facturacion):
+        r = client.get("/api/auditoria/estado-cadena", headers=h).json()
+        assert "valida" in r and r["total_bloques"] > 0 and "folios_sellados" in r

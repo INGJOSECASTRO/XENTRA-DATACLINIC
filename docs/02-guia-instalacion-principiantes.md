@@ -123,9 +123,9 @@ La documentación técnica interactiva de la API (para programadores) está en *
 8. En el folio firmado haga clic en **Verificar integridad** → debe decir que coincide.
 9. Intente agregar una **nota aclaratoria**.
 10. Antes de firmar, ponga un valor en "Valor del servicio". Cierre sesión, entre como **facturacion@xentra.co** →
-    **Facturación y RIPS** → marque la atención, escriba el pagador → **Armar factura** → **Emitir DIAN** →
+    **Facturación electrónica** (o **RIPS (generar y validar)** para validar antes de facturar) → marque la atención, escriba el pagador → **Armar factura** → **Emitir DIAN** →
     **Validar MUV** → **RIPS** (descarga el JSON). En modo simulado no se envía nada a entidades externas.
-11. Entre como **auditor@xentra.co** → **Auditoría (ledger)** → **Verificar cadena completa**. Verá todos los
+11. Entre como **auditor@xentra.co** → **Seguridad blockchain** → **Verificar cadena completa**. Verá todos los
     accesos que hizo, incluida la consulta de la historia.
 
 Para recorrer agenda, urgencias, hospitalización, laboratorio, farmacia, facturación y portal del paciente,

@@ -16,7 +16,7 @@ auditoría.
 | Farmacia | ✅ | ve inventario | ve inventario | — | — | ✅ | — | kárdex | — |
 | Facturación | ✅ | — | — | — | ✅ | — | — | ver | — |
 | Indicadores / SIVIGILA | ✅ | SIVIGILA | — | — | — | — | — | ✅ | — |
-| Auditoría (ledger) | ✅ | — | — | — | — | — | — | ✅ | quién vio su HC |
+| Seguridad blockchain | ✅ | — | — | — | — | — | — | ✅ | quién vio su HC |
 
 ## Mi cuenta y seguridad (todos)
 1. Menú **Mi cuenta y seguridad** → **Configurar** segundo factor.
