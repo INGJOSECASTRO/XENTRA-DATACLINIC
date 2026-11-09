@@ -84,6 +84,8 @@ Usuarios de demostración (solo con `CARGAR_DATOS_DEMO=true`), todos con la clav
 
 ## Documentación
 
+> 📘 **Manuales completos:** [desarrollo](docs/manuales/01-MANUAL-DESARROLLO.md) · [administrador técnico](docs/manuales/02-MANUAL-ADMINISTRADOR-TECNICO.md) · [usuario por rol](docs/manuales/03-MANUAL-USUARIO.md)
+
 | # | Documento | Contenido |
 |---|---|---|
 | 1 | [Arquitectura y decisiones](docs/01-arquitectura.md) | Tecnologías, por qué, diagrama, modelo de datos |
