@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { api } from './api/cliente'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from './stores/auth'
 import type { Rol } from './api/tipos'
@@ -20,11 +21,24 @@ const menu: { a: string; texto: string; roles: Rol[] }[] = [
   { a: '/farmacia', texto: 'Farmacia', roles: ['farmacia', 'admin'] },
   { a: '/facturacion', texto: 'Facturación y RIPS', roles: ['facturacion', 'admin', 'auditor'] },
   { a: '/reportes', texto: 'Indicadores', roles: ['admin', 'auditor', 'medico'] },
+  { a: '/bi', texto: 'Inteligencia de negocio', roles: PERSONAL },
+  { a: '/modulos', texto: 'Módulos adicionales', roles: PERSONAL },
+  { a: '/soporte', texto: 'Soporte y continuidad', roles: PERSONAL },
   { a: '/auditoria', texto: 'Auditoría (ledger)', roles: ['auditor', 'admin'] },
   { a: '/usuarios', texto: 'Usuarios', roles: ['admin'] },
   { a: '/cuenta', texto: 'Mi cuenta y seguridad', roles: [...PERSONAL, 'paciente'] },
 ]
 const visibles = computed(() => menu.filter((m) => auth.tiene(...m.roles)))
+
+const avisos = ref<{ id: number; nivel: string; mensaje: string }[]>([])
+let temporizadorAvisos: ReturnType<typeof setInterval> | undefined
+async function cargarAvisos() {
+  if (!auth.autenticado) return
+  try { avisos.value = (await api.get('/sistema/avisos')).data } catch { /* sin conexión: se reintenta */ }
+}
+onMounted(() => { cargarAvisos(); temporizadorAvisos = setInterval(cargarAvisos, 300_000) })
+watch(() => auth.token, (t) => (t ? cargarAvisos() : (avisos.value = [])))
+onUnmounted(() => clearInterval(temporizadorAvisos))
 
 function salir() {
   auth.logout()
@@ -51,7 +65,10 @@ function salir() {
         <button class="btn sec peq" @click="salir">Cerrar sesión</button>
       </div>
     </aside>
-    <main><RouterView /></main>
+    <main>
+      <div v-for="a in avisos" :key="a.id" :class="['alerta', a.nivel === 'critico' ? 'error' : a.nivel === 'aviso' ? 'aviso' : 'ok']">📢 {{ a.mensaje }}</div>
+      <RouterView />
+    </main>
   </div>
 </template>
 

@@ -37,6 +37,9 @@ Leyenda: ✅ implementado y probado · 🔶 parcial / punto de integración list
 
 | Tarea | Estado |
 |---|---|
+| RDA – Resolución 1888 de 2025 (consulta, urgencias, hospitalización, paciente) con validación y cola de envío | ✅ · 🔶 verificar perfiles y operaciones con la guía oficial · ⏳ RDA de dispensación (Res. 1799 de 2026) · 📋 registro y certificación ante la IHCE |
+| Constructor de reportes BI y módulos dinámicos sin programar | ✅ |
+| Mesa de ayuda con ANS, base de conocimiento, estado del sistema, PDF de contingencia, prueba semanal de restauración | ✅ |
 | API HL7 FHIR R4 de lectura + `$everything` | ✅ · ⏳ ajustar a los perfiles oficiales de la IHCE cuando el Ministerio los publique; escritura (recibir datos de otras IPS) |
 | Urgencias con triage (Res. 5596/2015) y sala de espera priorizada | ✅ |
 | Hospitalización: camas, evoluciones, órdenes, kárdex, balance de líquidos, traslados, epicrisis | ✅ |

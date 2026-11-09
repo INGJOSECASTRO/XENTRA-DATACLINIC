@@ -34,7 +34,10 @@ inteligencia artificial para CIE-10, interoperabilidad HL7 FHIR R4 y portal del 
 | **Facturación** | Armado de cuentas, **pre-auditoría** contra glosas frecuentes, emisión (DIAN vía proveedor), **RIPS** de consultas, procedimientos, urgencias, hospitalización y medicamentos, validación en el **MUV** (CUV) |
 | **Portal del paciente** | Su historia, citas (y teleconsulta), resultados, documentos, **quién consultó su historia**, descarga completa en FHIR |
 | **Indicadores** | Oportunidad de citas, inasistencia, triage, ocupación, estancia, mortalidad, facturación, uso de IA; reporte **SIVIGILA** |
-| **Interoperabilidad** | API **FHIR R4**: Patient, Encounter, Condition, MedicationRequest, Procedure, Observation, AllergyIntolerance, `$everything` |
+| **Interoperabilidad** | API **FHIR R4** con `$everything` y **RDA (Resolución 1888 de 2025)** generado al firmar o dar egreso, validado y enviado a la IHCE con cola de reintentos |
+| **Inteligencia de negocio** | Constructor de reportes sin programar (atenciones, citas, facturación, hospitalización, farmacia, urgencias, laboratorio y módulos propios), reportes sugeridos, gráficos, exportación a Excel, reportes compartidos por rol |
+| **Módulos adicionales** | La IPS crea sus propios formularios (escalas, eventos adversos, PQRS, gestantes…) sin programar, con roles, registros sellados y BI automático |
+| **Soporte y continuidad** | Código de error en cada falla, mesa de ayuda con ANS, base de conocimiento, estado del sistema con alertas, avisos de mantenimiento, **PDF de contingencia** para operar en papel, respaldos con prueba de restauración semanal |
 | **Seguridad** | Ledger SHA-256 + HMAC, anclaje externo (OpenTimestamps), **MFA**, Argon2id, bloqueo por intentos, cierre por inactividad, roles, triggers de BD, usuario de BD sin privilegios |
 
 ### Capturas
@@ -46,6 +49,8 @@ inteligencia artificial para CIE-10, interoperabilidad HL7 FHIR R4 y portal del 
 | ![Alergia](docs/img/09-hospitalizacion-alerta-alergia.png) | ![Camas](docs/img/10-mapa-camas.png) |
 | **Facturación: DIAN + MUV** | **Indicadores** |
 | ![Facturación](docs/img/11-facturacion.png) | ![Indicadores](docs/img/12-indicadores.png) |
+| **Inteligencia de negocio** | **Soporte y continuidad** |
+| ![BI](docs/img/15-inteligencia-negocio.png) | ![Estado](docs/img/16-estado-sistema.png) |
 
 ---
 
@@ -90,6 +95,8 @@ Usuarios de demostración (solo con `CARGAR_DATOS_DEMO=true`), todos con la clav
 | 7 | [Hoja de ruta](docs/07-hoja-de-ruta.md) | Qué está hecho y qué falta (incluye lo que no es código) |
 | 8 | [Guía para desarrolladores](docs/08-guia-desarrollo.md) | Estructura, migraciones, pruebas, endpoints |
 | 9 | [Manual de uso por módulo](docs/09-manual-modulos.md) | Cómo se usa cada pantalla, por rol |
+| 10 | [Análisis del mercado colombiano](docs/10-analisis-mercado.md) | Deficiencias documentadas del sector, con fuentes, y cómo las resuelve XENTRA |
+| 11 | [Plan de continuidad del negocio](docs/11-plan-continuidad.md) | RPO/RTO, escenarios (caída, ransomware), restauración, soporte |
 
 ## Estructura del proyecto
 
@@ -105,7 +112,7 @@ xentra-dataclinic/
 │   │   ├── api/             Rutas por módulo (agenda, hospital, farmacia, facturacion, fhir, portal…)
 │   │   └── services/        Lógica: ledger, rips, ia, pdf, fhir, facturacion, integraciones…
 │   ├── alembic/             Migraciones de base de datos
-│   └── tests/               43 pruebas automáticas
+│   └── tests/               49 pruebas automáticas
 ├── frontend/                Aplicación Vue 3 (views, components, stores)
 ├── db/                      Usuario de BD sin privilegios y script de respaldos
 ├── docs/                    Documentación

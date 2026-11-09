@@ -80,3 +80,20 @@ Elija el periodo. Los eventos de notificación obligatoria se detectan al firmar
 
 ## Auditoría
 **Verificar cadena completa** comprueba que nadie alteró el ledger. **Anclar ahora** publica el hash del último bloque (o programe `python -m app.anclar` a diario).
+
+## Inteligencia de negocio (todos los roles, según permisos)
+1. Menú **Inteligencia de negocio** → pulse un **reporte sugerido** (morbilidad por capítulo CIE-10 y curso de vida, producción por profesional, oportunidad de citas, facturación por pagador, estancia y mortalidad, demanda de urgencias por hora, consumo de medicamentos).
+2. O arme el suyo: elija **qué analizar**, hasta **3 campos para agrupar**, las **medidas** y los **filtros**.
+3. **Excel / CSV** descarga el resultado; **Guardar reporte** lo deja disponible y, si quiere, compartido con otros roles.
+4. Solo muestra datos agregados: nunca nombres ni documentos.
+
+## Módulos adicionales (administrador crea, cada rol usa)
+1. Administrador: **Instalar plantillas listas** (riesgo de caídas, eventos adversos, PQRS, seguimiento de gestantes) o **Crear módulo desde cero** (campos de texto, número, fecha, listas, sí/no, CIE-10; roles que consultan y registran; opción de sellar).
+2. Usuarios: eligen el módulo, el paciente si aplica, llenan el formulario y guardan. Los registros sellados (🔒) no se pueden modificar.
+3. Cada módulo aparece solo en **Inteligencia de negocio** para analizarlo.
+
+## Soporte y continuidad
+- **Mesa de ayuda**: reporte problemas con prioridad (crítica 4 h, alta 8 h, media 24 h, baja 72 h). Si la pantalla mostró un **código de error**, cópielo.
+- **Base de conocimiento**: soluciones de problemas anteriores.
+- **Plan de contingencia**: descargue el PDF al inicio de cada turno (agenda con alergias y medicamentos, censo hospitalario con órdenes).
+- Administrador / auditor: **Estado del sistema** (BD, disco, respaldos, prueba de restauración, ledger, integraciones, alertas), **RDA** (cola de envío a la IHCE, reintentos) y **Avisos** para todos los usuarios.

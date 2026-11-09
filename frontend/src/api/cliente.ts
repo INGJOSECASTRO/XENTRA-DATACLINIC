@@ -22,8 +22,11 @@ api.interceptors.response.use(
 
 /** Convierte cualquier error de la API en un mensaje legible en español. */
 export function mensajeError(e: unknown): string {
-  const err = e as { response?: { data?: { detail?: unknown } } }
+  const err = e as { response?: { status?: number; data?: { detail?: unknown }; headers?: Record<string, string> } }
+  if (!err.response) return 'No hay conexión con el servidor. Verifique su red; si persiste, use el plan de contingencia y reporte a soporte.'
   const detalle = err.response?.data?.detail
+  const codigo = err.response.headers?.['x-codigo-error']
+  if (err.response.status === 500 && typeof detalle !== 'string') return `Error inesperado. Reporte a soporte el código ${codigo || ''}`
   if (typeof detalle === 'string') return detalle
   if (Array.isArray(detalle)) return detalle.map((d) => `${d.loc?.slice(-1)[0]}: ${d.msg}`).join(' · ')
   if (detalle && typeof detalle === 'object' && 'errores' in detalle) return (detalle as { errores: string[] }).errores.join(' · ')
