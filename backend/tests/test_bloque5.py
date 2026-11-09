@@ -27,7 +27,11 @@ def test_rda_automatico_al_firmar(client, medico, auditor, jose):
     bundle = client.get(f"/api/rda/{envio['id']}", headers=medico).json()
     assert bundle["type"] == "document" and bundle["entry"][0]["resource"]["resourceType"] == "Composition"
     tipos = {e["resource"]["resourceType"] for e in bundle["entry"]}
-    assert {"Patient", "Practitioner", "Organization", "Encounter", "Condition", "MedicationRequest", "Observation"} <= tipos
+    assert {"Patient", "Practitioner", "Organization", "Encounter", "Condition", "MedicationRequest", "DocumentReference"} <= tipos
+    comp = bundle["entry"][0]["resource"]
+    codigos = {s["code"]["coding"][0]["code"] for s in comp["section"]}
+    assert {"48768-6", "10160-0", "48765-2", "11450-4"} <= codigos  # secciones oficiales de CompositionAmbulatoryRDA
+    assert comp["attester"][0]["mode"] == "legal"
     assert validar(bundle) == []
     assert client.get("/api/rda/resumen", headers=auditor).json()["por_estado"]["simulado"] >= 1
 
@@ -159,8 +163,9 @@ def test_rda_perfiles_oficiales_y_dispensacion(client, medico, auditor, jose):
     assert r.status_code == 201
     disp = next(e for e in client.get("/api/rda", headers=auditor).json() if e["tipo"] == "dispensacion")
     assert not disp["errores_validacion"], disp
-    b = client.get(f"/api/rda/{disp['id']}", headers=medico).json()
-    tipos = {e["resource"]["resourceType"] for e in b["entry"]}
-    assert {"MedicationDispense", "Medication", "MedicationRequest", "Patient"} <= tipos
+    recurso = client.get(f"/api/rda/{disp['id']}", headers=medico).json()
+    assert recurso["resourceType"] == "MedicationDispense"
+    assert recurso["meta"]["profile"] == ["https://fhir.minsalud.gov.co/rda/StructureDefinition/MedicationDispenseRDA"]
+    assert recurso["quantity"]["value"] == 9 and recurso["authorizingPrescription"] and recurso["contained"][0]["batch"]
     resumen = client.get("/api/rda/resumen", headers=auditor).json()
     assert resumen["plazos"]["rda_dispensacion"]["obligatorio_desde"] == "2027-03-01"

@@ -26,7 +26,18 @@ def generar_y_encolar(db: Session, tipo_entidad: str, objeto, tareas: Background
 
     try:
         if tipo_entidad == "atencion":
-            tipo, bundle = rda.rda_atencion(objeto)
+            from datetime import datetime, timedelta, timezone
+
+            from app.models_ext import OrdenServicio, Triage
+
+            labs = db.scalars(select(OrdenServicio).where(OrdenServicio.atencion_id == objeto.id,
+                                                          OrdenServicio.estado == "validada")).all()
+            triage = None
+            if objeto.tipo == "urgencias":
+                triage = db.scalars(select(Triage).where(
+                    Triage.paciente_id == objeto.paciente_id,
+                    Triage.llegada >= datetime.now(timezone.utc) - timedelta(hours=48)).order_by(Triage.llegada.desc())).first()
+            tipo, bundle = rda.rda_atencion(objeto, list(labs), triage)
         else:
             tipo, bundle = rda.rda_hospitalizacion(objeto)
         with db.begin_nested():

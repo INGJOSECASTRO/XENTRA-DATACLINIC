@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     IHCE_TOKEN: str = ""
     RDA_PERFIL_BASE: str = "https://fhir.minsalud.gov.co/rda/StructureDefinition"  # verificar con la guía oficial
     RDA_MAX_INTENTOS: int = 8
+    RDA_OPERACION_DISPENSACION: str = ""  # ruta de "Enviar Dispensación" que confirme la IHCE (Res. 1799 de 2026)
     ANCLAJE_MODO: str = "local"  # local | opentimestamps
     OTS_CALENDARIOS: str = "https://a.pool.opentimestamps.org,https://b.pool.opentimestamps.org"
     FACTURA_PREFIJO: str = "FEV"

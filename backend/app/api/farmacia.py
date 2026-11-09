@@ -200,9 +200,9 @@ def _rda_dispensacion(db: Session, movimientos, paciente_id, usuario, prescripci
         r = db.get(Prescripcion, prescripcion_id) if prescripcion_id else None
         for m in movimientos:
             db.refresh(m)
-        tipo, bundle = rda.rda_dispensacion(movimientos, db.get(Paciente, paciente_id), usuario, r, r.atencion if r else None)
-        with db.begin_nested():
-            rda.encolar(db, tipo, movimientos[0].id, paciente_id, bundle)
+        for tipo, recurso in rda.rda_dispensacion(movimientos, db.get(Paciente, paciente_id), usuario, r, r.atencion if r else None):
+            with db.begin_nested():
+                rda.encolar(db, tipo, recurso["id"], paciente_id, recurso)
         tareas.add_task(procesar_en_segundo_plano)
     except Exception as exc:
         logging.getLogger(__name__).exception("No se pudo generar el RDA de dispensación: %s", exc)
