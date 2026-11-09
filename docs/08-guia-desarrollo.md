@@ -4,82 +4,80 @@
 
 ```
 backend/app/
-├── main.py              Crea la app, registra rutas, al arrancar: tablas + triggers + datos iniciales
-├── models.py            Tablas (SQLAlchemy)
-├── schemas.py           Qué datos entran y salen de la API (Pydantic). Aquí van las validaciones.
-├── seed.py              Admin, catálogo CIE-10 de muestra y datos demo
-├── cargar_cie10.py      Script para cargar el catálogo oficial
-├── core/
-│   ├── config.py        Lee el .env
-│   ├── database.py      Conexión a PostgreSQL
-│   ├── security.py      Argon2id y JWT
-│   ├── deps.py          usuario_actual, requiere_rol(...) y grupos de roles
-│   └── inmutabilidad.py Triggers SQL de PostgreSQL
-├── api/                 Un archivo por módulo (rutas HTTP)
-└── services/            Lógica de negocio sin HTTP (fácil de probar)
-    ├── ledger.py        Cadena de bloques de auditoría
-    ├── historia.py      Hash/firma del folio
-    ├── rips.py          Generación del JSON RIPS
-    ├── cie10.py         Catálogo, búsqueda y motor local de sugerencias
-    ├── ia.py            Proveedor Claude + alertas clínicas
-    └── texto.py         Normalización y anonimización
+├── main.py              Crea la app y registra las rutas; en desarrollo crea tablas y triggers
+├── models.py            Tablas núcleo: usuarios, pacientes, atenciones, diagnósticos, ledger, CIE-10
+├── models_ext.py        Tablas hospitalarias: sedes, catálogos, citas, facturas, triage, camas, farmacia…
+├── schemas.py / schemas_ext.py   Validación de entrada/salida (Pydantic)
+├── seed.py              Admin, catálogos de muestra y datos demo
+├── cargar_cie10.py / cargar_catalogo.py / anclar.py   Scripts de línea de comandos
+├── core/                config, database, security (Argon2/JWT), deps (roles), inmutabilidad (triggers)
+├── api/                 Rutas: auth, pacientes, atenciones, cie10, agenda, hospital, farmacia, laboratorio,
+│                        facturacion, rips, fhir, portal, reportes, auditoria, administracion, publico
+└── services/            Lógica sin HTTP: ledger, historia, rips, facturacion, integraciones (DIAN/MUV),
+                         cie10, ia, resumen, seguridad_clinica, hospital, pdf, fhir, mfa, anclaje, catalogos
+backend/alembic/         Migraciones (versions/0001_esquema_inicial.py incluye triggers y permisos)
 ```
 
-**Regla de oro**: las rutas (`api/`) solo reciben la petición, verifican permisos y llaman a `services/`.
-La lógica vive en `services/` para poder probarla.
+**Regla de oro**: las rutas (`api/`) reciben la petición, verifican permisos y llaman a `services/`.
 
-## 8.2 Receta: agregar un módulo nuevo (ej. "Citas")
+## 8.2 Migraciones de base de datos (Alembic)
 
-1. **Modelo** en `models.py`: clase `Cita(Base)` con sus columnas.
-2. **Esquemas** en `schemas.py`: `CitaCrear` (entrada) y `CitaOut` (salida).
-3. **Rutas** en `api/citas.py` con `router = APIRouter(prefix="/api/citas", tags=["Citas"])`. Proteja cada
-   ruta con `Depends(requiere_rol(...))` y registre en el ledger las acciones importantes con `registrar_evento(...)`.
-4. **Registrar** el router en `main.py` (tupla de módulos).
-5. **Prueba** en `tests/test_citas.py`.
-6. **Frontend**: tipo en `src/api/tipos.ts`, vista en `src/views/CitasView.vue`, ruta en `src/router/index.ts`
-   (con `meta.roles`) y enlace en el menú de `App.vue`.
-7. Con Alembic (fase 0): `alembic revision --autogenerate -m "citas"` y `alembic upgrade head`.
+- En desarrollo y pruebas (`AUTO_CREAR_TABLAS=true`) las tablas se crean solas al arrancar.
+- En Docker/producción el servicio `migrate` ejecuta `alembic upgrade head` con el usuario dueño.
+- Después de cambiar un modelo:
+  ```bash
+  cd backend
+  alembic revision --autogenerate -m "agrega campo X"   # revise el archivo generado
+  alembic upgrade head
+  alembic check                                          # CI falla si modelos y migraciones no coinciden
+  ```
+- Si agrega una tabla que debe ser inalterable, añada su trigger en `core/inmutabilidad.py` **y** en la migración.
 
-## 8.3 Pruebas
+## 8.3 Receta: agregar un módulo nuevo
+
+1. Modelo en `models_ext.py`; esquemas en `schemas_ext.py`.
+2. Rutas en `api/mi_modulo.py`, protegidas con `Depends(requiere_rol(...))`; registre acciones con `registrar_evento(...)`.
+3. Registrar el router en `main.py`.
+4. Migración Alembic (8.2) y prueba en `tests/`.
+5. Frontend: vista en `src/views/`, ruta con `meta.roles` en `src/router/index.ts` y enlace en el menú de `App.vue`.
+
+## 8.4 Pruebas
 
 ```bash
 cd backend
-pytest                    # SQLite temporal, rápido
-TEST_DATABASE_URL=postgresql+psycopg://usuario:clave@localhost:5432/xentra_test pytest   # PostgreSQL real
+pytest                                                    # SQLite temporal
+TEST_DATABASE_URL=postgresql+psycopg://usuario:clave@localhost:5432/xentra_test pytest   # PostgreSQL + triggers
 ```
 
-Qué cubren (20 pruebas):
-- Formato CIE-10 colombiano, normalización y anonimización.
-- Alertas de signos vitales.
-- Motor de IA local (gripa → J00X, presión alta → I10X, ardor al orinar → N390, dolor lumbar → M545) y filtro por sexo.
-- Proveedor Claude simulado: descarta códigos inventados y no pertinentes; si falla usa el motor local.
-- Control de acceso por roles, bloqueo por intentos fallidos, contraseñas débiles.
-- Flujo completo: paciente → atención → firma → inmutabilidad → nota aclaratoria → RIPS → ledger.
-- Manipulación directa en la BD: en PostgreSQL los triggers la impiden; en SQLite la verificación la detecta.
+43 pruebas cubren: MFA (incluye vector RFC 6238), sesión, roles, catálogos, alertas de alergia/interacción,
+SIVIGILA, PDF y verificación pública, agenda (cruces, telemedicina, transiciones), facturación (pre-auditoría,
+DIAN y MUV simulados, no duplicar), RIPS de urgencias/hospitalización/medicamentos, triage, hospitalización completa,
+farmacia FEFO, laboratorio, consentimientos, FHIR, portal del paciente (incluye que no vea datos ajenos),
+indicadores, anclaje, IA local y Claude simulado, y manipulación directa de la BD.
 
-## 8.4 Convenciones
+## 8.5 Convenciones
 
-- Código y mensajes en **español** (el dominio es colombiano); nombres sin tildes en el código.
-- Nunca registre datos clínicos en los *logs* del servidor.
-- Nunca suba `.env`, respaldos ni datos reales al repositorio.
-- Cada cambio: rama nueva → *pull request* → revisión → pruebas en verde → *merge*.
+- Código y mensajes en español; nombres sin tildes en el código.
+- Fechas en UTC en la BD; se convierten a hora de Colombia al mostrar o en RIPS.
+- Nunca registre datos clínicos en los logs; nunca suba `.env`, respaldos ni datos reales.
+- Cada cambio: rama → pull request → CI en verde → revisión → merge.
 
-## 8.5 Endpoints principales
+## 8.6 Endpoints principales
 
-| Método | Ruta | Rol | Descripción |
-|---|---|---|---|
-| POST | `/api/auth/login` | público | Inicio de sesión (form `username`, `password`) |
-| GET/POST | `/api/auth/usuarios` | admin | Listar / crear usuarios |
-| GET/POST | `/api/pacientes` | clínicos, admisiones | Buscar / crear pacientes |
-| GET | `/api/pacientes/{id}/historia` | clínicos, auditor | Folios del paciente |
-| POST | `/api/atenciones` | médico, enfermería | Crear borrador |
-| PUT | `/api/atenciones/{id}` | autor | Editar borrador |
-| POST | `/api/atenciones/{id}/firmar` | autor | Firmar y sellar |
-| POST | `/api/atenciones/{id}/notas` | clínicos | Nota aclaratoria |
-| GET | `/api/atenciones/{id}/verificar` | clínicos, auditor | Verificar integridad |
-| GET | `/api/cie10?q=` | autenticado | Buscar CIE-10 |
-| POST | `/api/cie10/sugerir` | clínicos | Sugerencias IA |
-| POST | `/api/rips/generar` · `/descargar` | facturación | RIPS JSON |
-| GET | `/api/auditoria/ledger` · `/verificar-cadena` | auditor, admin | Ledger |
+| Área | Rutas |
+|---|---|
+| Autenticación | `POST /api/auth/login`, `/mfa/verificar`, `/mfa/configurar`, `/mfa/activar`, `/renovar`, `/cambiar-clave`, `/usuarios` |
+| Pacientes e HC | `/api/pacientes`, `/api/pacientes/{id}/historia`, `/api/atenciones` (+ `/firmar`, `/notas`, `/verificar`, `/pdf`) |
+| IA y catálogos | `/api/cie10`, `/api/cie10/sugerir`, `/api/catalogos/{tipo}`, `/api/clinica/plantillas`, `/api/clinica/revisar-prescripcion`, `/api/pacientes/{id}/resumen-ia` |
+| Agenda | `/api/citas`, `/api/citas/disponibilidad`, `/{id}/estado`, `/{id}/reprogramar`, `/api/citas/recordatorios` |
+| Urgencias | `/api/urgencias/triage`, `/api/urgencias/triage/sugerir`, `/api/urgencias/cola`, `/api/urgencias/triage/{id}/{atender|finalizar}` |
+| Hospitalización | `/api/camas`, `/api/hospitalizaciones` (+ `/evoluciones`, `/ordenes`, `/balance`, `/trasladar`, `/egreso`, `/epicrisis.pdf`), `/api/ordenes-medicas/{id}/{administrar|suspender}` |
+| Farmacia | `/api/farmacia/productos`, `/entradas`, `/ajustes`, `/alertas`, `/pendientes`, `/dispensar`, `/kardex/{id}` |
+| Laboratorio / consentimientos | `/api/ordenes-servicio` (+ `/toma`, `/resultado`, `/validar`), `/api/consentimientos` |
+| Facturación | `/api/facturas`, `/pendientes`, `/{id}/auditar`, `/{id}/emitir`, `/{id}/enviar-muv`, `/{id}/anular`, `/{id}/rips` |
+| FHIR R4 | `/fhir/metadata`, `/fhir/Patient?identifier=CC|123`, `/fhir/Patient/{id}/$everything`, `/fhir/{Recurso}?patient={id}` |
+| Portal | `/api/portal/resumen`, `/atenciones`, `/citas`, `/resultados`, `/accesos`, `/exportar` |
+| Reportes / auditoría | `/api/reportes/indicadores`, `/api/reportes/sivigila`, `/api/auditoria/ledger`, `/verificar-cadena`, `/anclar`, `/anclajes` |
+| Público | `/api/publico/verificar/{tipo}/{id}?h=hash` |
 
-La documentación interactiva completa está en `/docs` (Swagger) cuando el backend está corriendo.
+Documentación interactiva completa: `/docs` (Swagger) con el backend en marcha.

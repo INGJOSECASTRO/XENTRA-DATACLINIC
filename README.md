@@ -1,52 +1,51 @@
 # XENTRA DATACLINIC
 
-**Historia Clínica Electrónica (HCE) y gestión hospitalaria para Colombia**, con libro de auditoría
-inmutable tipo *blockchain*, RIPS en JSON (Resolución 2275 de 2023), asistente de inteligencia
-artificial para codificación CIE-10 y control de acceso por roles.
+**Historia Clínica Electrónica (HCE) y gestión hospitalaria para Colombia.** Incluye libro de auditoría
+inmutable tipo *blockchain*, RIPS en JSON (Resolución 2275 de 2023) con factura electrónica y validación en el MUV,
+inteligencia artificial para CIE-10, interoperabilidad HL7 FHIR R4 y portal del paciente.
 
-| Capa | Tecnología | Por qué |
-|---|---|---|
-| Backend (API) | **Python 3.13 + FastAPI** | Rápido, tipado, documentación automática de la API (Swagger). |
-| Base de datos | **PostgreSQL 16** | Robusta, gratuita, con *triggers* para hacer la HC inalterable. |
-| Frontend | **Vue 3 + TypeScript + Vite + Pinia** | Moderno, fácil de aprender, tipado para evitar errores. |
-| IA | Motor local (sin internet) + **Claude** de Anthropic (opcional) | Funciona sin conexión; con Claude mejora la precisión. |
-| Despliegue | **Docker Compose + Nginx** | Un solo comando levanta todo, igual en su PC y en el servidor. |
+| Capa | Tecnología |
+|---|---|
+| Backend (API) | **Python 3.13 + FastAPI + SQLAlchemy 2 + Alembic** |
+| Base de datos | **PostgreSQL 16** con triggers de inmutabilidad y usuario de aplicación sin privilegios |
+| Frontend | **Vue 3 + TypeScript + Vite + Pinia** |
+| IA | Motor local (sin internet) + **Claude** de Anthropic (opcional, con anonimización) |
+| Interoperabilidad | **HL7 FHIR R4** (`/fhir`) |
+| Despliegue | **Docker Compose + Nginx + Caddy (HTTPS automático)** + respaldos diarios |
 
-> **Sobre "PostgREST"**: usted mencionó *postgrest*. Ojo: **PostgreSQL** es la base de datos;
-> **PostgREST** es otra herramienta que expone la BD directamente como API. Con FastAPI **no se
-> necesita PostgREST** (y es mejor así: las reglas clínicas y de seguridad quedan en el backend).
-> Ver la explicación completa en [docs/01-arquitectura.md](docs/01-arquitectura.md).
+> **Sobre "PostgREST"**: **PostgreSQL** es la base de datos; **PostgREST** es otra herramienta que expone la BD
+> como API. Con FastAPI **no se necesita** (ver [docs/01-arquitectura.md](docs/01-arquitectura.md)).
 
 ---
 
-## ¿Qué hace hoy el sistema? (versión 0.1 – MVP funcional y probado)
+## Módulos (versión 0.2)
 
-- **Pacientes**: registro con los campos que exige RIPS (tipo/número de documento, DIVIPOLA, régimen,
-  EAPB), alergias visibles en rojo y **autorización de tratamiento de datos (Ley 1581 de 2012)**.
-- **Historia clínica en formato SOAP**: motivo, enfermedad actual, antecedentes, signos vitales (con IMC
-  y alertas automáticas: crisis hipertensiva, desaturación, fiebre…), examen físico, análisis, plan,
-  **fórmula médica** y procedimientos CUPS.
-- **Firma del folio**: al firmar, el folio queda **sellado e inalterable** (Res. 1995 de 1999). Los
-  errores se corrigen con **notas aclaratorias**, también inmutables.
-- **Seguridad tipo blockchain**: cada acción (inicio de sesión, consulta de una HC, firma, RIPS…) crea
-  un bloque encadenado con SHA-256 y firmado con HMAC. Un botón verifica toda la cadena y señala el
-  bloque exacto si alguien manipuló la base de datos.
-- **IA CIE-10**: sugiere diagnósticos a partir del texto clínico, entiende lenguaje coloquial
-  ("gripa", "presión alta", "ardor al orinar"), filtra por sexo/edad y **nunca inventa códigos**
-  (todo se valida contra el catálogo). El médico siempre decide.
-- **RIPS JSON (Res. 2275 de 2023)**: genera y valida el JSON de consultas y procedimientos por factura,
-  listo para el Mecanismo Único de Validación (MUV).
-- **Roles**: administrador, médico, enfermería, admisiones, facturación y auditor.
-- **Seguridad**: contraseñas Argon2id, JWT de 30 minutos, bloqueo tras 5 intentos fallidos,
-  cabeceras de seguridad, base de datos no expuesta a internet.
+| Módulo | Qué hace |
+|---|---|
+| **Pacientes** | Registro con campos RIPS, alergias destacadas, autorización Ley 1581, resumen clínico con IA |
+| **Historia clínica** | Formato SOAP, plantillas por tipo de consulta, **dictado por voz**, signos vitales con alertas, fórmula médica con **alertas de alergia e interacciones en tiempo real**, firma que sella el folio, notas aclaratorias, **PDF con código QR** de verificación |
+| **IA CIE-10** | Sugiere diagnósticos desde el texto clínico, entiende lenguaje coloquial, filtra por sexo/edad y nunca inventa códigos |
+| **Agenda** | Citas por profesional, disponibilidad, cruces de horario, **telemedicina** (sala de video), recordatorios, reprogramación |
+| **Urgencias** | **Triage** I–V (Res. 5596 de 2015) con sugerencia automática, sala de espera ordenada por prioridad y tiempos máximos |
+| **Hospitalización** | Mapa de camas, ingreso, evoluciones médicas y notas de enfermería, órdenes médicas, **kárdex**, balance de líquidos, traslados, egreso con **epicrisis** sellada |
+| **Laboratorio e imágenes** | Órdenes, toma de muestra, resultados con valores anormales resaltados, validación que sella el resultado |
+| **Farmacia** | Inventario por lotes y vencimientos, entradas, ajustes, alertas, **dispensación FEFO** de fórmulas y órdenes |
+| **Consentimientos** | Plantillas, **firma manuscrita** en tableta o celular, PDF con QR |
+| **Facturación** | Armado de cuentas, **pre-auditoría** contra glosas frecuentes, emisión (DIAN vía proveedor), **RIPS** de consultas, procedimientos, urgencias, hospitalización y medicamentos, validación en el **MUV** (CUV) |
+| **Portal del paciente** | Su historia, citas (y teleconsulta), resultados, documentos, **quién consultó su historia**, descarga completa en FHIR |
+| **Indicadores** | Oportunidad de citas, inasistencia, triage, ocupación, estancia, mortalidad, facturación, uso de IA; reporte **SIVIGILA** |
+| **Interoperabilidad** | API **FHIR R4**: Patient, Encounter, Condition, MedicationRequest, Procedure, Observation, AllergyIntolerance, `$everything` |
+| **Seguridad** | Ledger SHA-256 + HMAC, anclaje externo (OpenTimestamps), **MFA**, Argon2id, bloqueo por intentos, cierre por inactividad, roles, triggers de BD, usuario de BD sin privilegios |
 
 ### Capturas
 
-| Asistente IA CIE-10 | Folio firmado y verificado |
+| Atención con plantilla, IA y alertas | Triage de urgencias |
 |---|---|
-| ![IA](docs/img/02-atencion-ia.png) | ![Folio](docs/img/03-folio-firmado.png) |
-| **RIPS JSON** | **Auditoría (ledger)** |
-| ![RIPS](docs/img/04-rips.png) | ![Auditoría](docs/img/05-auditoria.png) |
+| ![Atención](docs/img/07-atencion-plantilla-alertas.png) | ![Triage](docs/img/08-urgencias-triage.png) |
+| **Alerta de alergia en hospitalización** | **Mapa de camas** |
+| ![Alergia](docs/img/09-hospitalizacion-alerta-alergia.png) | ![Camas](docs/img/10-mapa-camas.png) |
+| **Facturación: DIAN + MUV** | **Indicadores** |
+| ![Facturación](docs/img/11-facturacion.png) | ![Indicadores](docs/img/12-indicadores.png) |
 
 ---
 
@@ -55,22 +54,25 @@ artificial para codificación CIE-10 y control de acceso por roles.
 ```bash
 git clone https://github.com/ingjosecastro/xentra-dataclinic.git
 cd xentra-dataclinic
-cp .env.example .env          # luego edite .env y cambie las claves
+cp .env.example .env          # edite .env y cambie TODAS las claves
 docker compose up -d --build
 ```
 
-Abra **http://localhost:8080** e ingrese con `admin@xentra.co` y la clave `ADMIN_PASSWORD` de su `.env`.
+Abra **http://localhost:8080**. Administrador: `admin@xentra.co` con la clave `ADMIN_PASSWORD` de su `.env`.
 
-**¿Es principiante?** Siga la guía paso a paso, sin saltarse nada:
+**¿Es principiante?** Siga la guía paso a paso:
 👉 **[docs/02-guia-instalacion-principiantes.md](docs/02-guia-instalacion-principiantes.md)**
 
-Usuarios de demostración (solo si `CARGAR_DATOS_DEMO=true`), todos con la clave `Demo12345*`:
+Usuarios de demostración (solo con `CARGAR_DATOS_DEMO=true`), todos con la clave `Demo12345*`:
 
 | Correo | Rol |
 |---|---|
 | medico@xentra.co | Médico |
 | enfermeria@xentra.co | Enfermería |
+| admisiones@xentra.co | Admisiones / agenda |
 | facturacion@xentra.co | Facturación |
+| farmacia@xentra.co | Farmacia |
+| laboratorio@xentra.co | Laboratorio |
 | auditor@xentra.co | Auditor |
 
 ---
@@ -79,14 +81,15 @@ Usuarios de demostración (solo si `CARGAR_DATOS_DEMO=true`), todos con la clave
 
 | # | Documento | Contenido |
 |---|---|---|
-| 1 | [Arquitectura y decisiones](docs/01-arquitectura.md) | Qué tecnologías se usan, por qué, y qué cambiaría un experto |
-| 2 | [Guía de instalación para principiantes](docs/02-guia-instalacion-principiantes.md) | Desde instalar Docker hasta usar el sistema |
-| 3 | [Normatividad colombiana](docs/03-normatividad-colombiana.md) | Qué norma cumple cada función y qué falta |
-| 4 | [Seguridad y "blockchain"](docs/04-seguridad-blockchain.md) | Cómo funciona el ledger y por qué no una blockchain pública |
-| 5 | [RIPS](docs/05-rips.md) | Cómo se generan y validan los RIPS JSON |
-| 6 | [Inteligencia artificial y CIE-10](docs/06-ia-cie10.md) | Motor local, Claude, catálogo oficial |
-| 7 | [Hoja de ruta](docs/07-hoja-de-ruta.md) | Lo que falta para ser el mejor del mercado, por fases |
-| 8 | [Guía para desarrolladores](docs/08-guia-desarrollo.md) | Estructura del código, pruebas y cómo agregar módulos |
+| 1 | [Arquitectura y decisiones](docs/01-arquitectura.md) | Tecnologías, por qué, diagrama, modelo de datos |
+| 2 | [Guía de instalación para principiantes](docs/02-guia-instalacion-principiantes.md) | Desde instalar Docker hasta producción con HTTPS |
+| 3 | [Normatividad colombiana](docs/03-normatividad-colombiana.md) | Qué norma cubre cada función y qué falta |
+| 4 | [Seguridad y "blockchain"](docs/04-seguridad-blockchain.md) | Ledger, anclaje, MFA, usuario de BD, lista de verificación |
+| 5 | [RIPS, factura electrónica y MUV](docs/05-rips.md) | Flujo completo de facturación en salud |
+| 6 | [Inteligencia artificial](docs/06-ia-cie10.md) | CIE-10, resumen clínico, alertas, triage |
+| 7 | [Hoja de ruta](docs/07-hoja-de-ruta.md) | Qué está hecho y qué falta (incluye lo que no es código) |
+| 8 | [Guía para desarrolladores](docs/08-guia-desarrollo.md) | Estructura, migraciones, pruebas, endpoints |
+| 9 | [Manual de uso por módulo](docs/09-manual-modulos.md) | Cómo se usa cada pantalla, por rol |
 
 ## Estructura del proyecto
 
@@ -95,23 +98,24 @@ xentra-dataclinic/
 ├── backend/                 API FastAPI
 │   ├── app/
 │   │   ├── main.py          Punto de entrada
-│   │   ├── models.py        Tablas de la base de datos
-│   │   ├── schemas.py       Validación de datos de entrada/salida
-│   │   ├── core/            Configuración, BD, seguridad, triggers de inmutabilidad
-│   │   ├── api/             Rutas: auth, pacientes, atenciones, cie10, rips, auditoria
-│   │   ├── services/        Lógica: ledger, rips, cie10, ia, historia
-│   │   └── data/            Catálogo CIE-10 de muestra
-│   └── tests/               Pruebas automáticas (pytest)
-├── frontend/                Aplicación Vue 3
-│   └── src/ (views, components, stores, router, api)
+│   │   ├── models.py        Tablas núcleo (usuarios, pacientes, HC, ledger, CIE-10)
+│   │   ├── models_ext.py    Tablas de gestión hospitalaria
+│   │   ├── schemas*.py      Validación de datos
+│   │   ├── core/            Configuración, BD, seguridad, triggers
+│   │   ├── api/             Rutas por módulo (agenda, hospital, farmacia, facturacion, fhir, portal…)
+│   │   └── services/        Lógica: ledger, rips, ia, pdf, fhir, facturacion, integraciones…
+│   ├── alembic/             Migraciones de base de datos
+│   └── tests/               43 pruebas automáticas
+├── frontend/                Aplicación Vue 3 (views, components, stores)
+├── db/                      Usuario de BD sin privilegios y script de respaldos
 ├── docs/                    Documentación
-├── docker-compose.yml       Orquestación de contenedores
+├── docker-compose.yml       Desarrollo / servidor interno
+├── docker-compose.prod.yml  Producción con HTTPS (Caddy)
 └── .env.example             Plantilla de configuración
 ```
 
 ## Aviso importante
 
-Este software es una base técnica sólida, **no un producto certificado**. Antes de usarlo con pacientes
-reales: cargue el catálogo CIE-10 oficial completo, valide los RIPS en el ambiente de pruebas del MUV,
-haga una auditoría de seguridad (pentest), registre las bases de datos ante la SIC (RNBD) si aplica,
-y revise el cumplimiento con un asesor jurídico en salud. Ver [docs/07-hoja-de-ruta.md](docs/07-hoja-de-ruta.md).
+Este software es una base técnica sólida y probada, **no un producto certificado**. Antes de atender pacientes
+reales siga la **Fase 0** de la [hoja de ruta](docs/07-hoja-de-ruta.md): catálogos oficiales completos, pruebas en
+el ambiente del MUV y con su proveedor DIAN, prueba de penetración, políticas de datos (Ley 1581) y revisión jurídica.

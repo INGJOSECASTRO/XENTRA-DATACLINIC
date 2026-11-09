@@ -64,15 +64,18 @@ code .env
 
 Cambie **todos** los valores que dicen `CAMBIAR`:
 
-1. `POSTGRES_PASSWORD`: una clave larga para la base de datos.
-2. `DATABASE_URL`: ponga **la misma clave** en lugar de `CAMBIAR_clave_bd_muy_segura`.
-3. `SECRET_KEY` y `LEDGER_HMAC_KEY`: textos aleatorios largos. Para generarlos, si tiene Python:
+1. `POSTGRES_PASSWORD`: una clave larga para la base de datos (usuario dueño, solo para migraciones).
+2. `DATABASE_URL_MIGRACIONES`: ponga **la misma clave** en lugar de `CAMBIAR_clave_bd_muy_segura`.
+3. `APP_DB_PASSWORD`: otra clave distinta, para el usuario sin privilegios con el que corre la API, y póngala
+   también dentro de `DATABASE_URL` en lugar de `CAMBIAR_clave_usuario_aplicacion`.
+4. `SECRET_KEY` y `LEDGER_HMAC_KEY`: textos aleatorios largos. Para generarlos, si tiene Python:
    ```bash
    python -c "import secrets; print(secrets.token_urlsafe(64))"
    ```
    Si no tiene Python, use un generador de contraseñas de 64 caracteres (sin espacios ni comillas).
-4. `ADMIN_PASSWORD`: la clave del administrador (mínimo 10 caracteres, mayúsculas, minúsculas y números).
-5. `PRESTADOR_NIT`, `PRESTADOR_COD_HABILITACION` (12 dígitos del REPS) y `PRESTADOR_RAZON_SOCIAL`: los datos de su IPS.
+5. `ADMIN_PASSWORD`: la clave del administrador (mínimo 10 caracteres, mayúsculas, minúsculas y números).
+6. `URL_PUBLICA`: la dirección con la que se abrirá el sistema (se imprime en los QR de los documentos).
+7. `PRESTADOR_NIT`, `PRESTADOR_COD_HABILITACION` (12 dígitos del REPS) y `PRESTADOR_RAZON_SOCIAL`: los datos de su IPS.
 
 > ⚠️ **Guarde una copia segura de `LEDGER_HMAC_KEY`** (por ejemplo en un gestor de contraseñas).
 > Si la pierde, no podrá verificar la cadena de auditoría antigua.
@@ -92,7 +95,8 @@ Verifique que los 3 contenedores estén arriba:
 ```bash
 docker compose ps
 ```
-Deben aparecer `db`, `backend` y `frontend` con estado `running` / `healthy`.
+Deben aparecer `db`, `backend`, `frontend` y `respaldo` en estado `running` / `healthy`.
+El servicio `migrate` aparece como `exited (0)`: es normal, crea/actualiza las tablas y termina.
 
 ### Paso 6. Entrar al sistema
 
@@ -101,7 +105,9 @@ Abra el navegador en: **http://localhost:8080**
 - Usuario: `admin@xentra.co` (o el que puso en `ADMIN_EMAIL`)
 - Clave: la que puso en `ADMIN_PASSWORD`
 
-Si dejó `CARGAR_DATOS_DEMO=true`, también puede entrar como `medico@xentra.co` con clave `Demo12345*`.
+Si dejó `CARGAR_DATOS_DEMO=true`, también puede entrar como `medico@xentra.co`, `enfermeria@xentra.co`,
+`admisiones@xentra.co`, `facturacion@xentra.co`, `farmacia@xentra.co`, `laboratorio@xentra.co` o
+`auditor@xentra.co`, todos con la clave `Demo12345*`.
 
 La documentación técnica interactiva de la API (para programadores) está en **http://localhost:8080/docs**.
 
@@ -116,10 +122,14 @@ La documentación técnica interactiva de la API (para programadores) está en *
 7. Haga clic en **Firmar y cerrar folio** y confirme.
 8. En el folio firmado haga clic en **Verificar integridad** → debe decir que coincide.
 9. Intente agregar una **nota aclaratoria**.
-10. Cierre sesión, entre como **facturacion@xentra.co** → **RIPS / Facturación** → marque la atención, escriba
-    `FEV1001` → **Generar y validar** → **Descargar JSON**.
+10. Antes de firmar, ponga un valor en "Valor del servicio". Cierre sesión, entre como **facturacion@xentra.co** →
+    **Facturación y RIPS** → marque la atención, escriba el pagador → **Armar factura** → **Emitir DIAN** →
+    **Validar MUV** → **RIPS** (descarga el JSON). En modo simulado no se envía nada a entidades externas.
 11. Entre como **auditor@xentra.co** → **Auditoría (ledger)** → **Verificar cadena completa**. Verá todos los
     accesos que hizo, incluida la consulta de la historia.
+
+Para recorrer agenda, urgencias, hospitalización, laboratorio, farmacia, facturación y portal del paciente,
+siga el [manual por módulo](09-manual-modulos.md).
 
 ### Comandos útiles del día a día
 
@@ -130,9 +140,22 @@ La documentación técnica interactiva de la API (para programadores) está en *
 | Apagar todo (los datos se conservan) | `docker compose down` |
 | Encender de nuevo | `docker compose up -d` |
 | Actualizar después de cambiar el código | `git pull` y luego `docker compose up -d --build` |
-| Hacer copia de seguridad de la BD | `docker compose exec db pg_dump -U xentra xentra_hce > respaldo.sql` |
-| Restaurar una copia | `docker compose exec -T db psql -U xentra xentra_hce < respaldo.sql` |
+| Ver los respaldos automáticos (diarios, 2 a. m.) | carpeta `backups/` del proyecto |
+| Respaldo manual inmediato | `docker compose exec respaldo pg_dump -Fc -f /backups/manual.dump` |
+| Restaurar un respaldo | `docker compose exec respaldo pg_restore -h db -U xentra -d xentra_hce --clean --if-exists /backups/ARCHIVO.dump` |
+| Anclar el ledger (ponerlo en cron diario) | `docker compose exec backend python -m app.anclar` |
 | ⚠️ Borrar TODO, incluidos los datos | `docker compose down -v` (¡solo en pruebas!) |
+
+### Cargar las demás tablas oficiales (CUPS, CUM, DIVIPOLA, EAPB, tablas RIPS)
+
+Igual que la CIE-10: CSV con `codigo;descripcion[;datos]` (datos = JSON opcional, por ejemplo `{"valor": 45000}`
+para la tarifa de un CUPS) y:
+```bash
+docker compose cp cups.csv backend:/tmp/cups.csv
+docker compose exec backend python -m app.cargar_catalogo cups /tmp/cups.csv --reemplazar
+```
+Tipos: `cups, cum, divipola, eapb, tipo_usuario, modalidad, grupo_servicio, servicio, finalidad, causa_atencion,
+via_ingreso, condicion_egreso, concepto_recaudo, tipo_medicamento`.
 
 ### Cargar el catálogo CIE-10 oficial completo
 
@@ -222,7 +245,7 @@ Abra http://localhost:5173. Las llamadas a `/api` se reenvían automáticamente 
 cd backend
 pytest
 ```
-Debe ver `20 passed`. Para probar contra PostgreSQL real (incluye los triggers):
+Debe ver `43 passed`. Para probar contra PostgreSQL real (incluye los triggers):
 ```bash
 # Mac/Linux
 TEST_DATABASE_URL=postgresql+psycopg://xentra:mi_clave@localhost:5432/xentra_test pytest
@@ -245,13 +268,19 @@ TEST_DATABASE_URL=postgresql+psycopg://xentra:mi_clave@localhost:5432/xentra_tes
 
 ---
 
-## Llevarlo a producción (servidor en la nube)
-
-Resumen (detalle en la [hoja de ruta](07-hoja-de-ruta.md)):
+## Llevarlo a producción (servidor en la nube) con HTTPS
 
 1. Servidor Linux (Ubuntu 24.04) con mínimo 4 GB de RAM, **alojado preferiblemente en Colombia o en un país con
    nivel adecuado de protección de datos** (la transferencia internacional de datos personales tiene reglas en la Ley 1581).
-2. Dominio propio (ej. `hce.miips.com`) y **certificado HTTPS** (Let's Encrypt, gratis, con Caddy o Traefik).
-3. `CARGAR_DATOS_DEMO=false` y todas las claves cambiadas.
-4. Copias de seguridad automáticas diarias, cifradas y fuera del servidor. Pruebe restaurarlas cada mes.
-5. La HC debe conservarse mínimo **15 años** desde la última atención (Resolución 839 de 2017): planifique el almacenamiento.
+2. Instale Docker (`curl -fsSL https://get.docker.com | sh`) y Git; clone el proyecto y cree el `.env` como en los pasos 3 y 4.
+3. Compre un dominio (ej. `hce.miips.com`) y cree un registro DNS tipo **A** que apunte a la IP del servidor.
+4. En `.env`: `DOMINIO=hce.miips.com`, `URL_PUBLICA=https://hce.miips.com`, `CORS_ORIGINS=https://hce.miips.com`,
+   `CARGAR_DATOS_DEMO=false` y todas las claves cambiadas.
+5. Abra los puertos 80 y 443 en el firewall del servidor y ejecute:
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+   ```
+   Caddy obtiene y renueva solo el certificado HTTPS. El frontend y la API quedan accesibles únicamente por HTTPS.
+6. Copie la carpeta `backups/` fuera del servidor todos los días (cifrada) y pruebe restaurar una vez al mes.
+7. La HC debe conservarse mínimo **15 años** desde la última atención (Resolución 839 de 2017): planifique el almacenamiento.
+8. Cambie a modo real las integraciones (`DIAN_MODO`, `MUV_MODO`, `ANCLAJE_MODO=opentimestamps`) cuando tenga las credenciales.

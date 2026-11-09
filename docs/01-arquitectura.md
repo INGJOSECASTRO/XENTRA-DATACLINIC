@@ -63,6 +63,16 @@ Alternativas que se usan en el mercado y por qué **no** las elegí como base:
 | `notas_aclaratorias` | Correcciones posteriores a la firma (inmutables) |
 | `ledger_bloques` | Cadena de auditoría (hash, hash anterior, firma HMAC, usuario, IP, acción) |
 | `cie10` | Catálogo de diagnósticos con reglas de sexo y edad |
+| `catalogos` | Tablas de referencia (CUPS, CUM, DIVIPOLA, EAPB, tablas RIPS) |
+| `sedes` | Sedes de la institución (código de habilitación por sede) |
+| `citas` | Agenda (presencial y telemedicina) |
+| `triages` | Clasificación de urgencias |
+| `camas`, `hospitalizaciones`, `evoluciones`, `ordenes_medicas`, `administraciones_medicamento`, `balance_liquidos` | Hospitalización completa |
+| `productos`, `lotes`, `movimientos_inventario` | Farmacia e inventario |
+| `ordenes_servicio` | Laboratorio e imágenes (orden y resultado) |
+| `consentimientos` | Consentimientos informados con firma |
+| `facturas`, `factura_items` | Facturación electrónica y RIPS |
+| `anclajes_ledger` | Sellos de tiempo externos del ledger |
 
 ## 1.4 Flujo de una consulta
 

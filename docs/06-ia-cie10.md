@@ -56,11 +56,13 @@ Protecciones incluidas (`backend/app/services/ia.py`):
 |---|---|
 | Sugerencia de CIE-10 | ✅ |
 | Alertas de signos vitales (crisis hipertensiva, SpO₂ baja, fiebre, IMC) | ✅ (reglas clínicas) |
-| Alertas de alergia vs. medicamento formulado | 🔶 Fase 1 |
-| Interacciones medicamentosas | 🔶 Fase 2 (requiere base de datos farmacológica licenciada) |
-| Resumen automático de la HC para interconsultas/epicrisis | 🔶 Fase 2 (Claude) |
-| Dictado por voz → nota SOAP | 🔶 Fase 3 |
-| Auditoría de calidad de la nota y pertinencia RIPS antes de facturar (reduce glosas) | 🔶 Fase 2 |
+| Alertas de alergia (con reactividad cruzada) al formular, en consulta y hospitalización | ✅ |
+| Interacciones medicamentosas (tabla de apoyo con las más relevantes) | ✅ · 📋 base farmacológica licenciada para cobertura completa |
+| Resumen clínico automático (estructurado; narrativo con Claude) en ficha del paciente y portal | ✅ |
+| Sugerencia de nivel de triage a partir de signos vitales y motivo | ✅ |
+| Detección de eventos SIVIGILA por diagnóstico | ✅ |
+| Dictado por voz en todos los campos clínicos | ✅ (Web Speech API del navegador) |
+| Pre-auditoría de cuentas antes de facturar (reduce glosas) | ✅ reglas |
 | Predicción de reingreso / riesgo cardiovascular | 🔶 Fase 3 (requiere validación clínica) |
 
 ## 6.5 Cómo medir si la IA funciona

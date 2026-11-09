@@ -1,80 +1,68 @@
-# 5. RIPS (Resolución 2275 de 2023)
+# 5. RIPS, factura electrónica y MUV (Resolución 2275 de 2023)
 
 ## 5.1 ¿Qué son?
 
-Los **Registros Individuales de Prestación de Servicios de Salud (RIPS)** reportan cada servicio prestado.
-Con la Resolución 2275 de 2023 pasaron de archivos planos a **JSON**, y son **soporte obligatorio de la
-factura electrónica de venta (FEV)** en salud. El JSON se envía junto con la factura al **Mecanismo Único de
+Los **RIPS** reportan cada servicio prestado. Con la Resolución 2275 de 2023 son **JSON** y **soporte obligatorio
+de la factura electrónica de venta (FEV)** en salud. El JSON se envía con la factura al **Mecanismo Único de
 Validación (MUV)** del Ministerio de Salud, que devuelve un **Código Único de Validación (CUV)**.
 
-## 5.2 Flujo en XENTRA
+## 5.2 Flujo en XENTRA (módulo Facturación)
 
-1. El profesional **firma** la atención (solo se facturan atenciones cerradas).
-2. Facturación entra a **RIPS / Facturación**, selecciona las atenciones y escribe el número de la factura.
-3. **Generar y validar**: el sistema arma el JSON y revisa errores (diagnóstico principal, formato CIE-10,
-   sexo, DIVIPOLA, atención firmada…).
-4. **Descargar JSON** (solo si no hay errores).
-5. Se envía al MUV con la factura (manual hoy; automático en la fase 1 de la hoja de ruta).
-
-## 5.3 Estructura generada
-
-```json
-{
-  "numDocumentoIdObligado": "900000000",
-  "numFactura": "FEV1001",
-  "tipoNota": null,
-  "numNota": null,
-  "usuarios": [{
-    "tipoDocumentoIdentificacion": "CC",
-    "numDocumentoIdentificacion": "79888777",
-    "tipoUsuario": "04",
-    "fechaNacimiento": "1958-11-02",
-    "codSexo": "H",
-    "codPaisResidencia": "170",
-    "codMunicipioResidencia": "05001",
-    "codZonaTerritorialResidencia": "02",
-    "incapacidad": "NO",
-    "consecutivo": 1,
-    "codPaisOrigen": "170",
-    "servicios": {
-      "consultas": [{
-        "codPrestador": "110010000001",
-        "fechaInicioAtencion": "2026-11-09 13:10",
-        "numAutorizacion": null,
-        "codConsulta": "890201",
-        "modalidadGrupoServicioTecSal": "01",
-        "grupoServicios": "01",
-        "codServicio": 328,
-        "finalidadTecnologiaSalud": "44",
-        "causaMotivoAtencion": "38",
-        "codDiagnosticoPrincipal": "I10X",
-        "codDiagnosticoRelacionado1": "R51X",
-        "codDiagnosticoRelacionado2": null,
-        "codDiagnosticoRelacionado3": null,
-        "tipoDiagnosticoPrincipal": "01",
-        "tipoDocumentoIdentificacion": "CC",
-        "numDocumentoIdentificacion": "52123456",
-        "vrServicio": 45000,
-        "conceptoRecaudo": "05",
-        "valorPagoModerador": 0,
-        "numFEVPagoModerador": null,
-        "consecutivo": 1
-      }],
-      "procedimientos": [ ... ]
-    }
-  }]
-}
+```
+Atenciones firmadas / hospitalizaciones egresadas
+        │  seleccionar (mismo pagador)
+        ▼
+   Factura BORRADOR ──► Pre-auditoría automática (errores bloquean, advertencias informan)
+        │  Emitir DIAN (proveedor tecnológico)
+        ▼
+   Factura EMITIDA: número consecutivo + CUFE + XML + RIPS JSON
+        │  Validar MUV
+        ▼
+   VALIDADA (CUV)  o  RECHAZADA (se corrige y se reenvía)
 ```
 
-El código está en `backend/app/services/rips.py`.
+- Un servicio no puede estar en dos facturas vigentes; al anular un borrador vuelve a quedar pendiente.
+- Una factura **emitida no se anula**: se corrige con **nota crédito** ante la DIAN (`tipoNota` = NC en RIPS).
+- Medicamentos: se facturan los efectivamente **dispensados** por farmacia (con lote), no solo los formulados.
+- Hospitalización: estancia (días × valor día) + medicamentos dispensados por órdenes médicas.
 
-## 5.4 Antes de producción (importante)
+## 5.3 Servicios RIPS generados
 
-1. **Tablas de referencia**: los valores por defecto (`finalidadTecnologiaSalud`, `causaMotivoAtencion`,
-   `modalidadGrupoServicioTecSal`, `grupoServicios`, `codServicio`, `conceptoRecaudo`, `tipoUsuario`) deben
-   validarse contra las tablas vigentes publicadas en **SISPRO** (web.sispro.gov.co → Tablas de referencia).
-   Lo ideal es cargarlas como catálogos y mostrarlas como listas desplegables (fase 1).
-2. **Validar en el ambiente de pruebas del MUV** con facturas reales de prueba antes de facturar.
-3. **Servicios faltantes**: urgencias, hospitalización, recién nacidos, medicamentos y otros servicios.
-4. **Notas crédito/débito y ajustes** (`tipoNota`, `numNota`) ya están en el JSON, falta el flujo completo.
-5. **Hora local**: las fechas se convierten a hora de Colombia (`ZONA_HORARIA=America/Bogota`).
+| Servicio | Origen en el sistema |
+|---|---|
+| `consultas` | Cada atención firmada |
+| `procedimientos` | Procedimientos CUPS de la atención |
+| `urgencias` | Atención tipo urgencias con fecha y condición de egreso |
+| `hospitalizacion` | Hospitalización egresada (vía de ingreso, Dx de ingreso y egreso, condición, causa de muerte) |
+| `medicamentos` | Dispensaciones de farmacia (CUM, cantidad, valor unitario) |
+| `recienNacidos`, `otrosServicios` | ⏳ pendientes |
+
+Código: `backend/app/services/rips.py` y `backend/app/services/facturacion.py`.
+
+## 5.4 Pre-auditoría (reduce glosas)
+
+Revisa antes de emitir: errores de estructura RIPS, ítems sin valor, CUPS inexistentes, valor distinto a la tarifa
+del catálogo, paciente de otra EPS, falta de autorización, diagnóstico de síntoma marcado como confirmado,
+incoherencia de capítulo Z con finalidad, posibles duplicidades del mismo día.
+
+## 5.5 Integraciones (variables en `.env`)
+
+| Variable | Valores |
+|---|---|
+| `DIAN_MODO` | `simulado` (pruebas, CUFE ficticio) · `real` (llama a `DIAN_PROVEEDOR_URL` con `DIAN_PROVEEDOR_TOKEN`) |
+| `MUV_MODO` | `simulado` (CUV ficticio) · `real` (API FEV-RIPS en `MUV_URL` con `MUV_USUARIO`/`MUV_CLAVE`) |
+| `FACTURA_PREFIJO` | Prefijo autorizado en su resolución de facturación DIAN |
+
+**Antes de producción**: cada proveedor DIAN tiene su propia API; adapte `DianReal.emitir` en
+`backend/app/services/integraciones.py`. Verifique los endpoints del MUV contra el manual técnico vigente de la API
+FEV-RIPS del Ministerio y pruebe en su ambiente de pruebas.
+
+## 5.6 Tablas de referencia
+
+Los códigos (finalidad, causa, modalidad, grupo de servicio, servicio REPS, vía de ingreso, condición de egreso,
+concepto de recaudo, tipo de usuario) se eligen de listas alimentadas por el catálogo. Los valores incluidos son una
+**muestra**: cargue las tablas vigentes de SISPRO:
+
+```bash
+docker compose exec backend python -m app.cargar_catalogo finalidad /tmp/finalidad.csv --reemplazar
+```
