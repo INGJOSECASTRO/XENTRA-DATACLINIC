@@ -8,6 +8,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY alembic ./alembic
+COPY alembic.ini .
 
 # Usuario sin privilegios (buena práctica de seguridad)
 RUN useradd --create-home xentra

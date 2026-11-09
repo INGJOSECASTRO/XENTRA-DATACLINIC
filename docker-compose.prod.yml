@@ -1,0 +1,31 @@
+# Producción: HTTPS automático con Caddy (certificados gratuitos de Let's Encrypt).
+# Requisitos: un dominio (DOMINIO en .env) apuntando a la IP del servidor y los puertos 80/443 abiertos.
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMINIO: ${DOMINIO}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_datos:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+
+  frontend:
+    ports: !reset []   # solo accesible a través de Caddy
+
+  backend:
+    ports: !reset []
+    environment:
+      AUTO_CREAR_TABLAS: "false"
+      CARGAR_DATOS_DEMO: "false"
+
+volumes:
+  caddy_datos:
+  caddy_config:

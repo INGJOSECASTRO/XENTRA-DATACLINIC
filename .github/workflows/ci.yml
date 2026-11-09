@@ -34,6 +34,14 @@ jobs:
         run: pytest -q
         env:
           TEST_DATABASE_URL: postgresql+psycopg://xentra:xentra@localhost:5432/xentra_test
+      - name: Migraciones Alembic (aplicar y verificar que coinciden con los modelos)
+        run: |
+          PGPASSWORD=xentra psql -h localhost -U xentra -d xentra_test -c "CREATE DATABASE xentra_mig"
+          alembic upgrade head
+          alembic check
+          alembic downgrade base
+        env:
+          DATABASE_URL: postgresql+psycopg://xentra:xentra@localhost:5432/xentra_mig
 
   frontend:
     runs-on: ubuntu-latest

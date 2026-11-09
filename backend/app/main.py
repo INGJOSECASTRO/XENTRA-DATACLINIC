@@ -19,9 +19,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # En producción se recomienda Alembic para migraciones (ver docs/07-hoja-de-ruta.md).
-    Base.metadata.create_all(engine)
-    instalar_triggers(engine)
+    if settings.AUTO_CREAR_TABLAS:  # desarrollo y pruebas; en producción las tablas las crea Alembic
+        Base.metadata.create_all(engine)
+        instalar_triggers(engine)
     with SessionLocal() as db:
         inicializar(db)
     yield

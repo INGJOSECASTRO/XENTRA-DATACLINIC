@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     ZONA_HORARIA: str = "America/Bogota"
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:8080"
     CARGAR_DATOS_DEMO: bool = True
+    # true: crea tablas al arrancar (desarrollo/pruebas). En producción: false y se usa Alembic (servicio "migrate").
+    AUTO_CREAR_TABLAS: bool = True
 
     @property
     def cors_lista(self) -> list[str]:
