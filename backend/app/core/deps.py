@@ -17,6 +17,8 @@ def usuario_actual(token: str = Depends(oauth2), db: Session = Depends(get_db)) 
     error = HTTPException(status.HTTP_401_UNAUTHORIZED, "Sesión inválida o vencida", {"WWW-Authenticate": "Bearer"})
     try:
         datos = decodificar_token(token)
+        if datos.get("tipo", "acceso") != "acceso":
+            raise error
         usuario = db.get(Usuario, uuid.UUID(datos["sub"]))
     except (jwt.PyJWTError, KeyError, ValueError):
         raise error
@@ -45,6 +47,11 @@ def ip_cliente(request: Request) -> str | None:
 
 # Grupos de roles (matriz de permisos)
 CLINICOS = ("medico", "enfermeria", "admin")
+MEDICOS = ("medico", "admin")
 LECTURA_HC = ("medico", "enfermeria", "auditor", "admin")
 REGISTRO_PACIENTES = ("medico", "enfermeria", "admisiones", "admin")
 FACTURACION = ("facturacion", "admin")
+AGENDA = ("admisiones", "medico", "enfermeria", "admin")
+FARMACIA = ("farmacia", "admin")
+LABORATORIO = ("laboratorio", "admin")
+PERSONAL = ("admin", "medico", "enfermeria", "facturacion", "auditor", "admisiones", "farmacia", "laboratorio")

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.security import hash_password
 from app.models import CIE10, Paciente, Usuario
-from app.services import cie10
+from app.services import catalogos, cie10
 
 log = logging.getLogger(__name__)
 
@@ -32,6 +32,9 @@ def inicializar(db: Session) -> None:
     if (db.scalar(select(func.count()).select_from(CIE10)) or 0) == 0:
         n = cie10.cargar_csv(db)
         log.info("Catálogo CIE-10 de muestra cargado (%s códigos)", n)
+
+    if n := catalogos.cargar_muestra(db):
+        log.info("Catálogos de referencia de muestra cargados (%s registros)", n)
 
     if settings.CARGAR_DATOS_DEMO:
         for email, nombres, apellidos, rol, doc, registro, esp in USUARIOS_DEMO:

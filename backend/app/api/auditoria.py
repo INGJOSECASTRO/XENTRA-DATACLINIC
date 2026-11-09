@@ -3,7 +3,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import requiere_rol, usuario_actual
+from app.core.deps import PERSONAL, requiere_rol
 from app.models import Atencion, BloqueLedger, Paciente, Usuario
 from app.schemas import BloqueOut
 from app.services.ledger import verificar_cadena
@@ -28,7 +28,7 @@ def verificar(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("
 
 
 @router.get("/estadisticas")
-def estadisticas(db: Session = Depends(get_db), _: Usuario = Depends(usuario_actual)):
+def estadisticas(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*PERSONAL))):
     contar = lambda m, *w: db.scalar(select(func.count()).select_from(m).where(*w)) or 0  # noqa: E731
     return {
         "pacientes": contar(Paciente),

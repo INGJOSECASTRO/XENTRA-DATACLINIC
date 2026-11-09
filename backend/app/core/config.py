@@ -27,6 +27,20 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     IA_MODELO: str = "claude-opus-5-5"
 
+    URL_PUBLICA: str = "http://localhost:8080"  # se usa en los QR de verificación de documentos
+    JITSI_URL: str = "https://meet.jit.si"  # recomendado: servidor Jitsi propio para telesalud
+    # Integraciones externas: "simulado" (pruebas) o "real"
+    MUV_MODO: str = "simulado"
+    MUV_URL: str = "https://localhost:9443"  # API FEV-RIPS del Ministerio (contenedor local que publica MinSalud)
+    MUV_USUARIO: str = ""
+    MUV_CLAVE: str = ""
+    MUV_TIPO_USUARIO: str = "RE"
+    DIAN_MODO: str = "simulado"
+    DIAN_PROVEEDOR_URL: str = ""
+    DIAN_PROVEEDOR_TOKEN: str = ""
+    ANCLAJE_MODO: str = "local"  # local | opentimestamps
+    OTS_CALENDARIOS: str = "https://a.pool.opentimestamps.org,https://b.pool.opentimestamps.org"
+    FACTURA_PREFIJO: str = "FEV"
     ZONA_HORARIA: str = "America/Bogota"
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:8080"
     CARGAR_DATOS_DEMO: bool = True

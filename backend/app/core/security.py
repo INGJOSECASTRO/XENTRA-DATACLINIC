@@ -33,13 +33,15 @@ def validar_fortaleza(password: str) -> str | None:
     return None
 
 
-def crear_token(sub: str, rol: str) -> str:
+def crear_token(sub: str, rol: str, tipo: str = "acceso", minutos: int | None = None) -> str:
+    """tipo='acceso' para usar la API; tipo='mfa' es temporal (5 min) mientras se pide el segundo factor."""
     ahora = datetime.now(timezone.utc)
     payload = {
         "sub": sub,
         "rol": rol,
+        "tipo": tipo,
         "iat": ahora,
-        "exp": ahora + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        "exp": ahora + timedelta(minutes=minutos or settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITMO)
 

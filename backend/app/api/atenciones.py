@@ -10,7 +10,7 @@ from app.core.database import get_db
 from app.core.deps import CLINICOS, FACTURACION, LECTURA_HC, ip_cliente, requiere_rol
 from app.models import CIE10, Atencion, BloqueLedger, Diagnostico, NotaAclaratoria, Paciente, Prescripcion, Procedimiento, Usuario
 from app.schemas import AtencionCrear, AtencionGuardar, AtencionOut, AtencionResumen, NotaIn, NotaOut
-from app.services import historia
+from app.services import historia, seguridad_clinica
 from app.services.cie10 import pertinente
 from app.services.ia import alertas_clinicas
 from app.services.ledger import json_canonico, registrar_evento, sha256
@@ -28,7 +28,12 @@ def obtener(db: Session, atencion_id: uuid.UUID) -> Atencion:
 
 def salida(a: Atencion) -> AtencionOut:
     out = AtencionOut.model_validate(a)
-    out.alertas = alertas_clinicas(a.signos_vitales, edad_en(a.paciente.fecha_nacimiento))
+    alertas = alertas_clinicas(a.signos_vitales, edad_en(a.paciente.fecha_nacimiento))
+    meds = [r.medicamento for r in a.prescripciones]
+    alertas += [x["mensaje"] for x in seguridad_clinica.revisar_prescripcion(a.paciente.alergias, meds)]
+    alertas += [f"Evento de notificación obligatoria SIVIGILA: {e['evento']} ({e['codigo']}). Diligencie la ficha del INS."
+                for e in seguridad_clinica.eventos_sivigila([d.codigo_cie10 for d in a.diagnosticos])]
+    out.alertas = alertas
     return out
 
 
@@ -36,7 +41,9 @@ def _aplicar(db: Session, a: Atencion, datos: AtencionGuardar, paciente: Pacient
     edad = edad_en(paciente.fecha_nacimiento)
     for campo in ("tipo", "motivo_consulta", "enfermedad_actual", "antecedentes", "revision_sistemas", "examen_fisico",
                   "analisis", "plan", "cod_consulta_cups", "finalidad_tecnologia", "causa_motivo_atencion",
-                  "cod_servicio", "num_autorizacion", "valor_servicio", "valor_pago_moderador"):
+                  "cod_servicio", "num_autorizacion", "valor_servicio", "valor_pago_moderador",
+                  "modalidad_grupo_servicio", "grupo_servicios", "fecha_egreso", "condicion_egreso",
+                  "dx_causa_muerte", "sede_id"):
         setattr(a, campo, getattr(datos, campo))
     a.signos_vitales = datos.signos_vitales.model_dump(exclude_none=True) if datos.signos_vitales else None
 
@@ -152,6 +159,10 @@ def firmar(atencion_id: uuid.UUID, request: Request, db: Session = Depends(get_d
                               datos=historia.contenido_clinico(a), usuario_id=usuario.id, ip=ip_cliente(request))
     historia.marcar_firmada(a)
     a.bloque_ledger_id = bloque.id
+    eventos = seguridad_clinica.eventos_sivigila([d.codigo_cie10 for d in a.diagnosticos])
+    if eventos:
+        registrar_evento(db, accion="EVENTO_SIVIGILA", entidad="atencion", entidad_id=a.id, datos=eventos,
+                         usuario_id=usuario.id, ip=ip_cliente(request))
     db.commit()
     return salida(a)
 
@@ -193,3 +204,23 @@ def verificar(atencion_id: uuid.UUID, db: Session = Depends(get_db),
         "detalle": "El folio coincide con el sellado en el ledger" if integra
         else "ALERTA: el contenido del folio no coincide con el sellado al firmar",
     }
+
+
+@router.get("/{atencion_id}/pdf")
+def pdf(atencion_id: uuid.UUID, request: Request, documento: str = Query("historia", pattern="^(historia|formula)$"),
+        db: Session = Depends(get_db), usuario: Usuario = Depends(requiere_rol(*LECTURA_HC))):
+    """PDF de la historia clínica o de la fórmula médica, con QR de verificación."""
+    from fastapi.responses import Response
+
+    from app.services import pdf as generador
+
+    a = obtener(db, atencion_id)
+    if documento == "formula" and not a.prescripciones:
+        raise HTTPException(404, "La atención no tiene fórmula médica")
+    edad = edad_en(a.paciente.fecha_nacimiento)
+    contenido = generador.pdf_formula(a, edad) if documento == "formula" else generador.pdf_atencion(a, edad)
+    registrar_evento(db, accion="DESCARGA_PDF", entidad="atencion", entidad_id=a.id, datos={"documento": documento},
+                     usuario_id=usuario.id, ip=ip_cliente(request))
+    db.commit()
+    return Response(contenido, media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="{documento}_{a.consecutivo}.pdf"'})

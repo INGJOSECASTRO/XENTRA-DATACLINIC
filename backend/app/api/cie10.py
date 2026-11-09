@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import usuario_actual, requiere_rol, CLINICOS
+from app.core.deps import CLINICOS, PERSONAL, requiere_rol
 from app.models import CIE10, Paciente, Usuario
 from app.schemas import CIE10Out, SugerenciaIn, SugerenciasOut
 from app.services import cie10 as catalogo
@@ -14,12 +14,12 @@ router = APIRouter(prefix="/api/cie10", tags=["CIE-10 e inteligencia artificial"
 
 @router.get("", response_model=list[CIE10Out])
 def buscar(q: str = Query(..., min_length=1), limite: int = Query(20, le=100),
-           db: Session = Depends(get_db), _: Usuario = Depends(usuario_actual)):
+           db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*PERSONAL))):
     return catalogo.buscar(db, q, limite)
 
 
 @router.get("/{codigo}", response_model=CIE10Out)
-def obtener(codigo: str, db: Session = Depends(get_db), _: Usuario = Depends(usuario_actual)):
+def obtener(codigo: str, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*PERSONAL))):
     fila = db.get(CIE10, catalogo.formatear_codigo(codigo))
     if not fila:
         raise HTTPException(404, "Código no encontrado")

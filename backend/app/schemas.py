@@ -17,9 +17,24 @@ class ORM(BaseModel):
 
 # ---------------- Autenticación / usuarios ----------------
 class Token(BaseModel):
-    access_token: str
+    access_token: str | None = None
     token_type: str = "bearer"
+    mfa_requerido: bool = False
+    token_mfa: str | None = None
     usuario: "UsuarioOut"
+
+
+class MfaCodigo(BaseModel):
+    codigo: str = Field(min_length=6, max_length=8)
+
+
+class MfaVerificar(MfaCodigo):
+    token_mfa: str
+
+
+class CambioClave(BaseModel):
+    actual: str
+    nueva: str
 
 
 class UsuarioCrear(BaseModel):
@@ -29,9 +44,10 @@ class UsuarioCrear(BaseModel):
     apellidos: str = Field(min_length=2, max_length=100)
     email: EmailStr
     password: str
-    rol: Literal["admin", "medico", "enfermeria", "facturacion", "auditor", "admisiones"]
+    rol: Literal["admin", "medico", "enfermeria", "facturacion", "auditor", "admisiones", "farmacia", "laboratorio"]
     registro_profesional: str | None = None
     especialidad: str | None = None
+    sede_id: uuid.UUID | None = None
 
 
 class UsuarioOut(ORM):
@@ -45,6 +61,9 @@ class UsuarioOut(ORM):
     registro_profesional: str | None
     especialidad: str | None
     activo: bool
+    mfa_activo: bool = False
+    sede_id: uuid.UUID | None = None
+    paciente_id: uuid.UUID | None = None
 
 
 # ---------------- Pacientes ----------------
@@ -184,12 +203,18 @@ class AtencionGuardar(BaseModel):
     analisis: str | None = None
     plan: str | None = None
     cod_consulta_cups: str = Field("890201", pattern=r"^[0-9A-Za-z]{6}$")
-    finalidad_tecnologia: str = "44"
+    finalidad_tecnologia: str = "15"
     causa_motivo_atencion: str = "38"
     cod_servicio: int = 328
     num_autorizacion: str | None = None
     valor_servicio: Decimal = Decimal(0)
     valor_pago_moderador: Decimal = Decimal(0)
+    modalidad_grupo_servicio: str = "01"
+    grupo_servicios: str = "01"
+    fecha_egreso: datetime | None = None
+    condicion_egreso: str | None = None
+    dx_causa_muerte: str | None = None
+    sede_id: uuid.UUID | None = None
     diagnosticos: list[DiagnosticoIn] = Field(default_factory=list, max_length=4)
     procedimientos: list[ProcedimientoIn] = Field(default_factory=list)
     prescripciones: list[PrescripcionIn] = Field(default_factory=list)
@@ -238,6 +263,11 @@ class AtencionOut(AtencionResumen):
     num_autorizacion: str | None
     valor_servicio: Decimal
     valor_pago_moderador: Decimal
+    modalidad_grupo_servicio: str
+    grupo_servicios: str
+    fecha_egreso: datetime | None
+    condicion_egreso: str | None
+    dx_causa_muerte: str | None
     firmada_en: datetime | None
     hash_contenido: str | None
     bloque_ledger_id: int | None

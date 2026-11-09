@@ -43,6 +43,9 @@ class Rol(str, enum.Enum):
     FACTURACION = "facturacion"
     AUDITOR = "auditor"
     ADMISIONES = "admisiones"
+    FARMACIA = "farmacia"
+    LABORATORIO = "laboratorio"
+    PACIENTE = "paciente"
 
 
 class EstadoAtencion(str, enum.Enum):
@@ -64,6 +67,10 @@ class Usuario(Base):
     registro_profesional: Mapped[str | None] = mapped_column(String(30))  # ReTHUS / tarjeta profesional
     especialidad: Mapped[str | None] = mapped_column(String(100))
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
+    sede_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("sedes.id"))
+    paciente_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("pacientes.id"))  # solo rol "paciente" (portal)
+    totp_secreto: Mapped[str | None] = mapped_column(String(64))
+    mfa_activo: Mapped[bool] = mapped_column(Boolean, default=False)
     intentos_fallidos: Mapped[int] = mapped_column(Integer, default=0)
     bloqueado_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora_utc)
@@ -122,6 +129,7 @@ class Atencion(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     paciente_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("pacientes.id"), index=True)
     profesional_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("usuarios.id"))
+    sede_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("sedes.id"))
     consecutivo: Mapped[int] = mapped_column(Integer)  # número de folio dentro de la HC del paciente
     fecha_inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora_utc)
     tipo: Mapped[str] = mapped_column(String(20), default="consulta")  # consulta|urgencias|hospitalizacion
@@ -139,12 +147,16 @@ class Atencion(Base):
     modalidad_grupo_servicio: Mapped[str] = mapped_column(String(2), default="01")
     grupo_servicios: Mapped[str] = mapped_column(String(2), default="01")
     cod_servicio: Mapped[int] = mapped_column(Integer, default=328)
-    finalidad_tecnologia: Mapped[str] = mapped_column(String(2), default="44")
+    finalidad_tecnologia: Mapped[str] = mapped_column(String(2), default="15")
     causa_motivo_atencion: Mapped[str] = mapped_column(String(2), default="38")
     num_autorizacion: Mapped[str | None] = mapped_column(String(30))
     valor_servicio: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=0)
     concepto_recaudo: Mapped[str] = mapped_column(String(2), default="05")
     valor_pago_moderador: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=0)
+    # --- Egreso (urgencias / observación) ---
+    fecha_egreso: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    condicion_egreso: Mapped[str | None] = mapped_column(String(2))
+    dx_causa_muerte: Mapped[str | None] = mapped_column(String(4))
     # --- Integridad ---
     estado: Mapped[str] = mapped_column(String(10), default=EstadoAtencion.BORRADOR.value)
     firmada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
