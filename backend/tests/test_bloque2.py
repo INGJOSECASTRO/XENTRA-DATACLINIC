@@ -7,11 +7,8 @@ from tests.conftest import token
 
 
 @pytest.fixture(scope="module")
-def admisiones(client, admin):
-    client.post("/api/auth/usuarios", json={"numero_documento": "901", "nombres": "Adm", "apellidos": "Isiones",
-                                             "email": "admisiones@xentra.co", "password": "Clave12345*", "rol": "admisiones"},
-                headers=admin)
-    return token(client, "admisiones@xentra.co", "Clave12345*")
+def admisiones(client):
+    return token(client, "admisiones@xentra.co")
 
 
 @pytest.fixture(scope="module")

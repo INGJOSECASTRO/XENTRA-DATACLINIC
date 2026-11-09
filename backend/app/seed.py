@@ -17,6 +17,9 @@ USUARIOS_DEMO = [
     ("enfermeria@xentra.co", "Carlos", "Pérez Díaz", "enfermeria", "80123456", "TP-98765", "Enfermería"),
     ("facturacion@xentra.co", "Ana", "Martínez", "facturacion", "1010123456", None, None),
     ("auditor@xentra.co", "Jorge", "Ramírez", "auditor", "79123456", "RM-555555", "Auditoría médica"),
+    ("admisiones@xentra.co", "Paula", "Rincón", "admisiones", "1020111222", None, None),
+    ("farmacia@xentra.co", "Andrés", "Mora", "farmacia", "1020333444", "QF-1234", "Química farmacéutica"),
+    ("laboratorio@xentra.co", "Diana", "Suárez", "laboratorio", "1020555666", "BAC-5678", "Bacteriología"),
 ]
 CLAVE_DEMO = "Demo12345*"
 
@@ -42,6 +45,7 @@ def inicializar(db: Session) -> None:
                 db.add(Usuario(tipo_documento="CC", numero_documento=doc, nombres=nombres, apellidos=apellidos,
                                email=email, hashed_password=hash_password(CLAVE_DEMO), rol=rol,
                                registro_profesional=registro, especialidad=esp))
+        _demo_hospital(db)
         if not db.scalars(select(Paciente).limit(1)).first():
             db.add_all([
                 Paciente(tipo_documento="CC", numero_documento="1020304050", primer_nombre="María",
@@ -60,3 +64,33 @@ def inicializar(db: Session) -> None:
                          autoriza_tratamiento_datos=True),
             ])
         db.commit()
+
+
+def _demo_hospital(db: Session) -> None:
+    from datetime import timedelta
+
+    from app.models_ext import Cama, Lote, Producto, Sede
+
+    if not db.scalars(select(Sede).limit(1)).first():
+        db.add(Sede(nombre="Sede Principal", cod_habilitacion=settings.PRESTADOR_COD_HABILITACION, cod_municipio="11001",
+                    direccion="Calle 100 # 10-20"))
+    if not db.scalars(select(Cama).limit(1)).first():
+        for servicio, prefijo, n in (("adultos", "H", 6), ("pediatria", "P", 3), ("observacion", "OBS", 4), ("uci", "UCI", 2)):
+            for i in range(1, n + 1):
+                db.add(Cama(codigo=f"{prefijo}-{i:02d}", servicio=servicio))
+    if not db.scalars(select(Producto).limit(1)).first():
+        vence = date.today() + timedelta(days=540)
+        demo = [
+            ("Acetaminofén 500 mg tableta", "19940582-1", "500 mg", "Tableta", 120, 1, 800),
+            ("Losartán 50 mg tableta", "20005316-2", "50 mg", "Tableta", 60, 0, 300),
+            ("Amoxicilina 500 mg cápsula", "19935744-3", "500 mg", "Cápsula", 50, 1, 400),
+            ("Ibuprofeno 400 mg tableta", "19915263-4", "400 mg", "Tableta", 40, 0, 250),
+            ("Cloruro de sodio 0,9% 500 mL", "19960283-5", "0,9%", "Solución inyectable", 30, 1, 5000),
+        ]
+        for nombre, cum, conc, forma, minimo, _, precio in demo:
+            p = Producto(nombre=nombre, cum=cum, concentracion=conc, forma_farmaceutica=forma, stock_minimo=minimo // 4,
+                         precio_unitario=precio, unidad=forma.lower())
+            db.add(p)
+            db.flush()
+            db.add(Lote(producto_id=p.id, numero=f"L{cum[-3:]}A", vencimiento=vence, cantidad=minimo * 2))
+    db.commit()

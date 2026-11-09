@@ -61,6 +61,42 @@ END; $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_nota_inmutable ON notas_aclaratorias;
 CREATE TRIGGER trg_nota_inmutable BEFORE UPDATE OR DELETE ON notas_aclaratorias
   FOR EACH ROW EXECUTE FUNCTION hce_nota_inmutable();
+
+-- Registros de solo inserción: evoluciones, kárdex, consentimientos, balance de líquidos, anclajes
+CREATE OR REPLACE FUNCTION hce_solo_insercion() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'La tabla % es de solo inserción (registro clínico inalterable)', TG_TABLE_NAME;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_evol_inmutable ON evoluciones;
+CREATE TRIGGER trg_evol_inmutable BEFORE UPDATE OR DELETE ON evoluciones
+  FOR EACH ROW EXECUTE FUNCTION hce_solo_insercion();
+DROP TRIGGER IF EXISTS trg_kardex_inmutable ON administraciones_medicamento;
+CREATE TRIGGER trg_kardex_inmutable BEFORE UPDATE OR DELETE ON administraciones_medicamento
+  FOR EACH ROW EXECUTE FUNCTION hce_solo_insercion();
+DROP TRIGGER IF EXISTS trg_consent_inmutable ON consentimientos;
+CREATE TRIGGER trg_consent_inmutable BEFORE UPDATE OR DELETE ON consentimientos
+  FOR EACH ROW EXECUTE FUNCTION hce_solo_insercion();
+DROP TRIGGER IF EXISTS trg_balance_inmutable ON balance_liquidos;
+CREATE TRIGGER trg_balance_inmutable BEFORE UPDATE OR DELETE ON balance_liquidos
+  FOR EACH ROW EXECUTE FUNCTION hce_solo_insercion();
+DROP TRIGGER IF EXISTS trg_mov_inmutable ON movimientos_inventario;
+CREATE TRIGGER trg_mov_inmutable BEFORE UPDATE OR DELETE ON movimientos_inventario
+  FOR EACH ROW EXECUTE FUNCTION hce_solo_insercion();
+DROP TRIGGER IF EXISTS trg_anclaje_inmutable ON anclajes_ledger;
+CREATE TRIGGER trg_anclaje_inmutable BEFORE UPDATE OR DELETE ON anclajes_ledger
+  FOR EACH ROW EXECUTE FUNCTION hce_solo_insercion();
+
+-- Epicrisis y resultados validados quedan sellados
+CREATE OR REPLACE FUNCTION hce_sellado() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'Registro sellado en %: no se puede modificar', TG_TABLE_NAME;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_hosp_sellada ON hospitalizaciones;
+CREATE TRIGGER trg_hosp_sellada BEFORE UPDATE OR DELETE ON hospitalizaciones
+  FOR EACH ROW WHEN (OLD.estado = 'egresada') EXECUTE FUNCTION hce_sellado();
+DROP TRIGGER IF EXISTS trg_resultado_sellado ON ordenes_servicio;
+CREATE TRIGGER trg_resultado_sellado BEFORE UPDATE OR DELETE ON ordenes_servicio
+  FOR EACH ROW WHEN (OLD.estado = 'validada') EXECUTE FUNCTION hce_sellado();
 """
 
 

@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 import app.models_ext  # noqa: F401  (registra las tablas de los módulos)
-from app.api import administracion, agenda, atenciones, auditoria, auth, cie10, facturacion, pacientes, publico, rips
+from app.api import (administracion, agenda, atenciones, auditoria, auth, cie10, facturacion, farmacia, hospital,
+                     laboratorio, pacientes, publico, rips)
 from app.core.config import settings
 from app.core.database import Base, SessionLocal, engine
 from app.core.inmutabilidad import instalar_triggers
@@ -52,7 +53,8 @@ async def cabeceras_seguridad(request: Request, call_next):
     return respuesta
 
 
-for modulo in (auth, pacientes, atenciones, cie10, rips, auditoria, administracion, publico, agenda, facturacion):
+for modulo in (auth, pacientes, atenciones, cie10, rips, auditoria, administracion, publico, agenda, facturacion,
+               hospital, farmacia, laboratorio):
     app.include_router(modulo.router)
 
 

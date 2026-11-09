@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.models import Atencion
 from app.models_ext import Consentimiento, Hospitalizacion, OrdenServicio
 from app.services import historia
+from app.services import hospital as hsrv
 from app.services.pdf import fecha
 
 router = APIRouter(prefix="/api/publico", tags=["Verificación pública"])
@@ -29,15 +30,15 @@ def verificar(tipo: str, doc_id: uuid.UUID, h: str = "", db: Session = Depends(g
     elif tipo == "epicrisis":
         x = db.get(Hospitalizacion, doc_id)
         if x and x.hash_epicrisis:
-            respuesta.update(valido=x.hash_epicrisis == h, fecha_firma=fecha(x.fecha_egreso))
+            respuesta.update(valido=hsrv.hash_epicrisis(x) == x.hash_epicrisis == h, fecha_firma=fecha(x.fecha_egreso))
     elif tipo == "consentimiento":
         x = db.get(Consentimiento, doc_id)
         if x:
-            respuesta.update(valido=x.hash_contenido == h, fecha_firma=fecha(x.fecha))
+            respuesta.update(valido=hsrv.hash_consentimiento(x) == x.hash_contenido == h, fecha_firma=fecha(x.fecha))
     elif tipo == "resultado":
         x = db.get(OrdenServicio, doc_id)
         if x and x.hash_resultado:
-            respuesta.update(valido=x.hash_resultado == h, fecha_firma=fecha(x.fecha_resultado))
+            respuesta.update(valido=hsrv.hash_resultado(x) == x.hash_resultado == h, fecha_firma=fecha(x.fecha_resultado))
     respuesta["mensaje"] = ("Documento auténtico: coincide con el registro sellado de la institución." if respuesta["valido"]
                             else "No se pudo verificar: el documento no existe, fue alterado o el código no corresponde.")
     return respuesta

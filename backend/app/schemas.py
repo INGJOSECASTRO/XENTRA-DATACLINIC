@@ -178,7 +178,7 @@ class PrescripcionIn(BaseModel):
 
 
 class PrescripcionOut(PrescripcionIn, ORM):
-    pass
+    id: uuid.UUID
 
 
 class SignosVitales(BaseModel):
