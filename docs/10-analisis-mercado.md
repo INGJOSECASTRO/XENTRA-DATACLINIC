@@ -62,7 +62,17 @@ Se buscaron comentarios, quejas y vulnerabilidades públicas de **Dinámica Gere
 - Resolución 1888 de 2025 / RDA: [Consultor Salud](https://consultorsalud.com/colombia-resumen-digital-de-atencion-en-salud/), [Compilación Supersalud](https://normograma.supersalud.gov.co/compilacion/docs/resolucion_minsaludps_1888_2025.htm), [Alcaldía de Bogotá](https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=190733&dt=S), [Guía FHIR RDA – IHCE](https://vulcano.ihcecol.gov.co/), [Manual de Operaciones IHCE](https://www.minsalud.gov.co/ihce/Manuales/Manual_de_operaciones_interoperabilidad_IHCE.pdf), [RDA dispensación – Res. 1799 de 2026](https://consultorsalud.com/rda-de-dispensacion-de-medicamentos-en-colombia/)
 - Interoperabilidad y auditoría: [SciELO – HCE interoperable Colombia](http://www.scielo.org.pe/scielo.php?script=sci_arttext&pid=S2227-47312022000100026), [Radio Nacional](https://www.radionacional.co/actualidad/salud/medicos-en-colombia-pueden-acceder-historias-clinicas-en-toda-la-red-de-salud), [Saludtools – auditoría HC](https://www.saludtools.com/articulo/auditoria-historia-clinica-colombia), [Supersalud – Juan N. Corpas](https://consultorsalud.com/supersalud-medida-cautelar-clinica-juan-corpas/), [Salud by Díaz](https://saludbydiaz.com/2026/11/06/las-quejas-en-la-atencion-de-la-salud/)
 
-**Pendiente de verificar en fuente oficial** (no fue posible abrir las páginas del Ministerio desde el entorno de
-desarrollo): plazos exactos de la Resolución 1888 de 2025 y de la 1799 de 2026, URL canónicas de los perfiles RDA y
-nombres de las operaciones de envío. Se configuran en `.env` (`RDA_PERFIL_BASE`, `IHCE_URL`) y en
-`backend/app/services/rda.py` (`OPERACIONES`).
+**Datos confirmados (noviembre de 2026):** Res. 1888/2025 obligatoria desde el 15/04/2026; Res. 1799/2026 con plazo
+hasta el 01/03/2027; operaciones `POST /Composition/$enviar-rda-{paciente|consulta-externa|urgencias|hospitalizacion}`
+(Manual de Operaciones IHCE v1.3); URL canónica de perfiles `https://fhir.minsalud.gov.co/rda/StructureDefinition/`
+(guía FHIR RDA).
+
+**Por confirmar en la guía vigente:** nombre del perfil y de la operación del RDA de dispensación, y los códigos de
+tipo de documento y de secciones. La URL de la IHCE (`IHCE_URL`) la asigna el Ministerio al registrar la IPS.
+Fuentes adicionales: [Guía de cumplimiento Res. 1888](https://softwaremedico.com.co/resolucion-1888-guia-cumplimiento-rda/),
+[Res. 1799 de 2026 – Alcaldía de Bogotá](https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=193963&dt=S),
+[Perfil CompositionHospitalizationRDA](https://vulcano.ihcecol.gov.co/StructureDefinition-CompositionHospitalizationRDA),
+[Perfil CompositionPatientStatementRDA](https://vulcano.ihcecol.gov.co/StructureDefinition-CompositionPatientStatementRDA),
+[Perfil CompositionEmergencyRDA](https://vulcano.ihcecol.gov.co/StructureDefinition-CompositionEmergencyRDA-definitions),
+[RDA consulta externa](https://vulcano.ihcecol.gov.co/guia/RDA-consulta.html),
+[Manual de Operaciones IHCE v1.3](https://www.minsalud.gov.co/ihce/Manuales/Manual_de_operaciones_interoperabilidad_IHCE_V1_3.pdf).

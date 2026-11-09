@@ -139,3 +139,28 @@ def test_soporte_y_continuidad(client, admin, medico):
     # Modo contingencia
     pdf = client.get("/api/sistema/contingencia", headers=medico)
     assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+
+
+def test_rda_perfiles_oficiales_y_dispensacion(client, medico, auditor, jose):
+    farmacia = token(client, "farmacia@xentra.co")
+    # Consulta externa usa el perfil oficial CompositionAmbulatoryRDA
+    cola = client.get("/api/rda", headers=auditor).json()
+    consulta = next(e for e in cola if e["tipo"] == "consulta")
+    comp = client.get(f"/api/rda/{consulta['id']}", headers=medico).json()["entry"][0]["resource"]
+    assert comp["meta"]["profile"] == ["https://fhir.minsalud.gov.co/rda/StructureDefinition/CompositionAmbulatoryRDA"]
+    # Dispensar una fórmula genera el RDA de dispensación (Res. 1799 de 2026)
+    a = client.post("/api/atenciones", json={"paciente_id": jose["id"], "motivo_consulta": "Dolor", "diagnosticos": [{"codigo_cie10": "R529"}],
+                    "prescripciones": [{"medicamento": "Acetaminofén 500 mg tableta", "dosis": "1", "frecuencia": "c/8h",
+                                        "duracion_dias": 3, "cantidad": 9}]}, headers=medico).json()
+    client.post(f"/api/atenciones/{a['id']}/firmar", headers=medico)
+    prod = next(p for p in client.get("/api/farmacia/productos", headers=farmacia).json() if p["nombre"].startswith("Acetaminofén"))
+    r = client.post("/api/farmacia/dispensar", json={"producto_id": prod["id"], "cantidad": 9,
+                    "prescripcion_id": a["prescripciones"][0]["id"]}, headers=farmacia)
+    assert r.status_code == 201
+    disp = next(e for e in client.get("/api/rda", headers=auditor).json() if e["tipo"] == "dispensacion")
+    assert not disp["errores_validacion"], disp
+    b = client.get(f"/api/rda/{disp['id']}", headers=medico).json()
+    tipos = {e["resource"]["resourceType"] for e in b["entry"]}
+    assert {"MedicationDispense", "Medication", "MedicationRequest", "Patient"} <= tipos
+    resumen = client.get("/api/rda/resumen", headers=auditor).json()
+    assert resumen["plazos"]["rda_dispensacion"]["obligatorio_desde"] == "2027-03-01"

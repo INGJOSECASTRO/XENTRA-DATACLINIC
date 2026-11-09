@@ -5,11 +5,15 @@ Composition, seguido de todos los recursos que referencia (Patient, Practitioner
 Condition, MedicationRequest, Procedure, Observation, AllergyIntolerance). Se genera por evento de atención
 (consulta externa, urgencias, hospitalización) y existe el RDA de paciente (antecedentes).
 
-IMPORTANTE - verificar contra la guía oficial (vulcano.ihcecol.gov.co) y el Manual de Operaciones IHCE:
-- URLs canónicas de los perfiles (RDA_PERFIL_BASE en .env) y códigos de tipo de documento/secciones.
-- Nombres de las operaciones de envío (OPERACIONES abajo; la guía documenta $enviar-rda-paciente).
-Este módulo deja la estructura, la validación y la cola de envío listas; ajustar esos identificadores es
-configuración, no reprogramación.
+Fuentes de los identificadores (revisión de noviembre de 2026):
+- Perfiles: guía FHIR RDA de la IHCE (vulcano.ihcecol.gov.co). URL canónica base
+  https://fhir.minsalud.gov.co/rda/StructureDefinition/ con CompositionAmbulatoryRDA (consulta externa),
+  CompositionEmergencyRDA (urgencias), CompositionHospitalizationRDA (hospitalización) y
+  CompositionPatientStatementRDA (paciente).
+- Operaciones: Manual de Operaciones de Interoperabilidad IHCE v1.3 (POST /Composition/$enviar-rda-...).
+- Plazos: Res. 1888/2025 obligatoria desde el 15/04/2026; Res. 1799/2026 (dispensación) hasta el 01/03/2027.
+POR CONFIRMAR en la guía vigente: el perfil y la operación del RDA de dispensación (Res. 1799 de 2026), y los
+códigos de tipo de documento y de secciones. Todo es configurable (PERFILES / OPERACIONES / .env).
 """
 import logging
 import uuid
@@ -32,12 +36,27 @@ TIPOS = {
     "urgencias": ("RDA-urgencias", "Resumen Digital de Atención - Urgencias"),
     "hospitalizacion": ("RDA-hospitalizacion", "Resumen Digital de Atención - Hospitalización"),
     "paciente": ("RDA-paciente", "Resumen Digital de Atención - Paciente (antecedentes)"),
+    "dispensacion": ("RDA-dispensacion", "Resumen Digital de Atención - Dispensación de medicamentos"),
 }
-OPERACIONES = {  # verificar contra el Manual de Operaciones IHCE vigente
+# Perfil Composition por tipo (guía FHIR RDA, IHCE)
+PERFILES = {
+    "consulta": "CompositionAmbulatoryRDA",
+    "urgencias": "CompositionEmergencyRDA",
+    "hospitalizacion": "CompositionHospitalizationRDA",
+    "paciente": "CompositionPatientStatementRDA",
+    "dispensacion": "CompositionDispensationRDA",  # POR CONFIRMAR en la guía vigente (Res. 1799 de 2026)
+}
+# Manual de Operaciones de Interoperabilidad IHCE v1.3
+OPERACIONES = {
     "consulta": "Composition/$enviar-rda-consulta-externa",
     "urgencias": "Composition/$enviar-rda-urgencias",
     "hospitalizacion": "Composition/$enviar-rda-hospitalizacion",
     "paciente": "Composition/$enviar-rda-paciente",
+    "dispensacion": "Composition/$enviar-rda-dispensacion",  # POR CONFIRMAR (convención de la Res. 1799)
+}
+PLAZOS = {
+    "rda_clinico": {"norma": "Resolución 1888 de 2025", "obligatorio_desde": "2026-04-15"},
+    "rda_dispensacion": {"norma": "Resolución 1799 de 2026", "obligatorio_desde": "2027-03-01"},
 }
 SIS_TIPO_RDA = "https://fhir.minsalud.gov.co/rda/CodeSystem/tipo-rda"  # verificar
 LOINC_SECCIONES = {
@@ -51,6 +70,7 @@ LOINC_SECCIONES = {
     "resultados": ("30954-2", "Resultados de exámenes"),
     "plan": ("18776-5", "Plan de manejo"),
     "egreso": ("8648-8", "Curso hospitalario / epicrisis"),
+    "dispensacion": ("60590-7", "Medicamentos dispensados"),
 }
 
 
@@ -103,7 +123,6 @@ def _empaquetar(tipo: str, composicion: dict, recursos: list[dict]) -> dict:
     ahora = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     return {
         "resourceType": "Bundle",
-        "meta": {"profile": [f"{settings.RDA_PERFIL_BASE}/Bundle{TIPOS[tipo][0]}"]},
         "identifier": {"system": "urn:ietf:rfc:3986", "value": _url("Bundle", composicion["id"] + ahora)},
         "type": "document",
         "timestamp": ahora,
@@ -114,7 +133,7 @@ def _empaquetar(tipo: str, composicion: dict, recursos: list[dict]) -> dict:
 def _composicion(tipo: str, id_, paciente, autor_id, fecha, encuentro_id, secciones: list) -> dict:
     perfil, titulo = TIPOS[tipo]
     c = {"resourceType": "Composition", "id": f"rda-{tipo}-{id_}",
-         "meta": {"profile": [f"{settings.RDA_PERFIL_BASE}/{perfil}"]},
+         "meta": {"profile": [f"{settings.RDA_PERFIL_BASE.rstrip('/')}/{PERFILES[tipo]}"]},
          "status": "final",
          "type": {"coding": [{"system": SIS_TIPO_RDA, "code": perfil, "display": titulo},
                              {"system": fhir.LOINC, "code": "60591-5", "display": "Patient summary Document"}]},
@@ -185,6 +204,35 @@ def rda_paciente(p: Paciente, atenciones: list[Atencion]) -> tuple[str, dict]:
                  _seccion("enfermedad", [], antecedentes)]
     comp = _composicion("paciente", p.id, p, None, datetime.now(timezone.utc).replace(microsecond=0).isoformat(), None, secciones)
     return "paciente", _empaquetar("paciente", comp, [fhir.patient(p), _organizacion(), *alergia, *condiciones])
+
+
+def rda_dispensacion(movimientos: list, paciente, dispensador, prescripcion=None, atencion=None) -> tuple[str, dict]:
+    """Res. 1799 de 2026: una entrega de farmacia (uno o varios lotes) ligada a la prescripción que la originó."""
+    from types import SimpleNamespace as N
+
+    primero = movimientos[0]
+    dispensaciones, medicamentos = [], []
+    for m in movimientos:
+        prod = m.producto
+        med = {"resourceType": "Medication", "id": f"med-{prod.id}",
+               "code": {**({"coding": [{"system": fhir.SIS_CUM, "code": prod.cum}]} if prod.cum else {}), "text": prod.nombre},
+               **({"batch": {"lotNumber": m.lote.numero, "expirationDate": m.lote.vencimiento.isoformat()}} if m.lote else {})}
+        medicamentos.append(med)
+        d = {"resourceType": "MedicationDispense", "id": str(m.id), "status": "completed",
+             "medicationReference": fhir.ref("Medication", med["id"]), "subject": fhir.ref("Patient", paciente.id),
+             "performer": [{"actor": fhir.ref("Practitioner", dispensador.id)}],
+             "quantity": {"value": abs(m.cantidad), "unit": prod.unidad}, "whenHandedOver": fhir._fecha(m.fecha)}
+        if prescripcion is not None and atencion is not None:
+            d["authorizingPrescription"] = [fhir.ref("MedicationRequest", prescripcion.id)]
+        dispensaciones.append(d)
+    recursos = [fhir.patient(paciente), fhir.practitioner(dispensador), _organizacion(), *medicamentos, *dispensaciones]
+    if prescripcion is not None and atencion is not None:
+        orden = fhir.medication_request(prescripcion, atencion)
+        orden.pop("encounter", None)  # la consulta de origen viaja en su propio RDA de consulta externa
+        recursos += [orden, fhir.practitioner(atencion.profesional)]
+    secciones = [_seccion("dispensacion", dispensaciones)]
+    comp = _composicion("dispensacion", primero.id, paciente, dispensador.id, fhir._fecha(primero.fecha), None, secciones)
+    return "dispensacion", _empaquetar("dispensacion", comp, recursos)
 
 
 def validar(bundle: dict) -> list[str]:

@@ -2,7 +2,7 @@
 import uuid
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -142,7 +142,7 @@ def pendientes(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(
 
 
 @router.post("/dispensar", response_model=list[MovimientoOut], status_code=201)
-def dispensar(datos: DispensarIn, request: Request, db: Session = Depends(get_db),
+def dispensar(datos: DispensarIn, request: Request, tareas: BackgroundTasks, db: Session = Depends(get_db),
               usuario: Usuario = Depends(requiere_rol(*FARMACIA))):
     """Entrega medicamentos usando primero los lotes que vencen antes (FEFO)."""
     if bool(datos.prescripcion_id) == bool(datos.orden_id):
@@ -183,8 +183,29 @@ def dispensar(datos: DispensarIn, request: Request, db: Session = Depends(get_db
     db.flush()
     registrar_evento(db, accion="DISPENSACION", entidad="producto", entidad_id=p.id,
                      datos=datos.model_dump(mode="json"), usuario_id=usuario.id, ip=ip_cliente(request))
+    _rda_dispensacion(db, movimientos, paciente_id, usuario, datos.prescripcion_id, tareas)
     db.commit()
     return movimientos
+
+
+def _rda_dispensacion(db: Session, movimientos, paciente_id, usuario, prescripcion_id, tareas) -> None:
+    """RDA de dispensación (Res. 1799 de 2026). Nunca bloquea la entrega del medicamento."""
+    import logging
+
+    from app.api.rda import procesar_en_segundo_plano
+    from app.models import Paciente
+    from app.services import rda
+
+    try:
+        r = db.get(Prescripcion, prescripcion_id) if prescripcion_id else None
+        for m in movimientos:
+            db.refresh(m)
+        tipo, bundle = rda.rda_dispensacion(movimientos, db.get(Paciente, paciente_id), usuario, r, r.atencion if r else None)
+        with db.begin_nested():
+            rda.encolar(db, tipo, movimientos[0].id, paciente_id, bundle)
+        tareas.add_task(procesar_en_segundo_plano)
+    except Exception as exc:
+        logging.getLogger(__name__).exception("No se pudo generar el RDA de dispensación: %s", exc)
 
 
 @router.get("/kardex/{producto_id}", response_model=list[MovimientoOut])

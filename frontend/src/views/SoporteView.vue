@@ -174,6 +174,16 @@ onMounted(cargar)
         <button class="btn" @click="procesarRda">Procesar cola ahora</button>
       </div>
       <p><span v-for="(n, e) in rdaResumen?.por_estado" :key="e" class="etiqueta ia" style="margin-right: .4rem">{{ e }}: {{ n }}</span></p>
+      <div v-if="rdaResumen?.plazos" class="rejilla">
+        <div v-for="(p, k) in rdaResumen.plazos" :key="k">
+          <strong>{{ k === 'rda_clinico' ? 'RDA clínico' : 'RDA de dispensación' }}</strong> · {{ p.norma }}<br />
+          <span :class="['etiqueta', new Date(p.obligatorio_desde) <= new Date() ? 'borrador' : 'ia']">
+            {{ new Date(p.obligatorio_desde) <= new Date() ? 'Obligatorio desde' : 'Obligatorio a partir de' }} {{ p.obligatorio_desde }}</span>
+        </div>
+      </div>
+      <div v-if="rdaResumen && !rdaResumen.ihce_configurada" class="alerta aviso" style="margin-top: .6rem">
+        La IHCE no está configurada (IHCE_URL). Los RDA se generan y validan, pero no se transmiten al Ministerio hasta que la IPS se registre y configure la URL y la credencial asignadas.
+      </div>
     </div>
     <div class="tarjeta">
       <table>

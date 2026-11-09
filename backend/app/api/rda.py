@@ -42,7 +42,8 @@ def resumen(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("ad
     filas = db.execute(select(RdaEnvio.estado, func.count()).group_by(RdaEnvio.estado)).all()
     from app.core.config import settings
 
-    return {"modo": settings.RDA_MODO, "por_estado": {e: n for e, n in filas}}
+    return {"modo": settings.RDA_MODO, "por_estado": {e: n for e, n in filas}, "plazos": rda.PLAZOS,
+            "ihce_configurada": bool(settings.IHCE_URL)}
 
 
 @router.get("")
