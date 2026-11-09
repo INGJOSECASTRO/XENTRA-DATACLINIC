@@ -7,6 +7,15 @@ const bloques = ref<Bloque[]>([])
 const accion = ref('')
 const cadena = ref<{ valida: boolean; total_bloques: number; detalle?: string; bloque_con_error?: number; ultimo_hash?: string } | null>(null)
 const verificando = ref(false)
+const anclajes = ref<{ id: number; bloque: number; fecha: string; proveedor: string; estado: string; coincide: boolean; hash: string }[]>([])
+async function cargarAnclajes() {
+  anclajes.value = (await api.get('/auditoria/anclajes')).data
+}
+async function anclar() {
+  const { data } = await api.post('/auditoria/anclar')
+  alert(`Bloque ${data.bloque} anclado (${data.proveedor}): ${data.estado}`)
+  await cargarAnclajes()
+}
 
 async function cargar() {
   bloques.value = (await api.get('/auditoria/ledger', { params: { accion: accion.value || undefined, limite: 200 } })).data
@@ -17,7 +26,7 @@ async function verificar() {
   verificando.value = false
 }
 const fecha = (f: string) => new Date(f).toLocaleString('es-CO')
-onMounted(cargar)
+onMounted(() => { cargar(); cargarAnclajes() })
 </script>
 
 <template>
@@ -36,10 +45,28 @@ onMounted(cargar)
     </div>
   </div>
   <div class="tarjeta">
+    <div class="fila entre">
+      <div>
+        <h2 style="margin: 0">Anclaje externo</h2>
+        <p class="suave" style="margin: .3rem 0">Publica solo el hash del último bloque (sello de tiempo). Ver docs/04-seguridad-blockchain.md.</p>
+      </div>
+      <button class="btn sec" @click="anclar">Anclar ahora</button>
+    </div>
+    <table v-if="anclajes.length">
+      <tbody>
+        <tr v-for="a in [...anclajes].reverse().slice(0, 10)" :key="a.id">
+          <td>{{ fecha(a.fecha) }}</td><td>Bloque #{{ a.bloque }}</td><td>{{ a.proveedor }} · {{ a.estado }}</td>
+          <td><span :class="['etiqueta', a.coincide ? 'firmada' : 'borrador']">{{ a.coincide ? 'coincide' : 'NO coincide' }}</span></td>
+          <td class="mono">{{ a.hash.slice(0, 16) }}…</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tarjeta">
     <div class="fila" style="margin-bottom: .75rem">
       <select v-model="accion" style="max-width: 280px" @change="cargar">
         <option value="">Todas las acciones</option>
-        <option v-for="x in ['LOGIN', 'LOGIN_FALLIDO', 'PACIENTE_CREADO', 'CONSULTA_PACIENTE', 'CONSULTA_HC', 'CONSULTA_ATENCION', 'ATENCION_CREADA', 'ATENCION_FIRMADA', 'NOTA_ACLARATORIA', 'RIPS_GENERADO', 'USUARIO_CREADO']" :key="x">{{ x }}</option>
+        <option v-for="x in ['LOGIN', 'LOGIN_FALLIDO', 'PACIENTE_CREADO', 'CONSULTA_PACIENTE', 'CONSULTA_HC', 'CONSULTA_ATENCION', 'ATENCION_CREADA', 'ATENCION_FIRMADA', 'NOTA_ACLARATORIA', 'RIPS_GENERADO', 'USUARIO_CREADO', 'MFA_FALLIDO', 'FACTURA_EMITIDA', 'DISPENSACION', 'TRIAGE', 'HOSPITALIZACION_INGRESO', 'HOSPITALIZACION_EGRESO', 'CONSENTIMIENTO', 'RESULTADO_VALIDADO', 'FHIR_EXPORTACION', 'EVENTO_SIVIGILA', 'PORTAL_EXPORTACION']" :key="x">{{ x }}</option>
       </select>
     </div>
     <table>

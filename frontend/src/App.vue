@@ -8,14 +8,23 @@ const auth = useAuth()
 const route = useRoute()
 const router = useRouter()
 
-const menu: { a: string; texto: string; roles?: Rol[] }[] = [
-  { a: '/', texto: 'Inicio' },
-  { a: '/pacientes', texto: 'Pacientes' },
-  { a: '/rips', texto: 'RIPS / Facturación', roles: ['facturacion', 'admin'] },
+const PERSONAL: Rol[] = ['admin', 'medico', 'enfermeria', 'facturacion', 'auditor', 'admisiones', 'farmacia', 'laboratorio']
+const menu: { a: string; texto: string; roles: Rol[] }[] = [
+  { a: '/portal', texto: 'Mi salud', roles: ['paciente'] },
+  { a: '/', texto: 'Inicio', roles: PERSONAL },
+  { a: '/pacientes', texto: 'Pacientes', roles: ['admin', 'medico', 'enfermeria', 'admisiones', 'auditor'] },
+  { a: '/agenda', texto: 'Agenda', roles: ['admisiones', 'medico', 'enfermeria', 'admin'] },
+  { a: '/urgencias', texto: 'Urgencias', roles: ['medico', 'enfermeria', 'admin', 'admisiones'] },
+  { a: '/hospitalizacion', texto: 'Hospitalización', roles: ['medico', 'enfermeria', 'admin', 'admisiones', 'auditor'] },
+  { a: '/laboratorio', texto: 'Laboratorio e imágenes', roles: ['laboratorio', 'medico', 'enfermeria', 'admin'] },
+  { a: '/farmacia', texto: 'Farmacia', roles: ['farmacia', 'admin'] },
+  { a: '/facturacion', texto: 'Facturación y RIPS', roles: ['facturacion', 'admin', 'auditor'] },
+  { a: '/reportes', texto: 'Indicadores', roles: ['admin', 'auditor', 'medico'] },
   { a: '/auditoria', texto: 'Auditoría (ledger)', roles: ['auditor', 'admin'] },
   { a: '/usuarios', texto: 'Usuarios', roles: ['admin'] },
+  { a: '/cuenta', texto: 'Mi cuenta y seguridad', roles: [...PERSONAL, 'paciente'] },
 ]
-const visibles = computed(() => menu.filter((m) => !m.roles || auth.tiene(...m.roles)))
+const visibles = computed(() => menu.filter((m) => auth.tiene(...m.roles)))
 
 function salir() {
   auth.logout()
@@ -51,7 +60,7 @@ function salir() {
 aside { background: var(--primario-osc); color: #fff; display: flex; flex-direction: column; padding: 1rem; position: sticky; top: 0; height: 100vh; }
 .marca { display: flex; gap: .6rem; align-items: center; margin-bottom: 1.5rem; }
 .marca small { display: block; font-size: .65rem; letter-spacing: .15em; opacity: .8; }
-nav { display: flex; flex-direction: column; gap: .2rem; flex: 1; }
+nav { display: flex; flex-direction: column; gap: .2rem; flex: 1; overflow-y: auto; }
 nav a { color: #e6fffa; padding: .55rem .75rem; border-radius: 8px; font-size: .9rem; }
 nav a:hover { background: rgba(255,255,255,.08); }
 nav a.activo { background: rgba(255,255,255,.16); font-weight: 600; }

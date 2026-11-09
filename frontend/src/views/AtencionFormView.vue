@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, mensajeError } from '../api/cliente'
 import type { Atencion, CIE10, Diagnostico, Paciente, Prescripcion, Procedimiento, Sugerencia } from '../api/tipos'
 import SelectorCIE10 from '../components/SelectorCIE10.vue'
+import CampoTexto from '../components/CampoTexto.vue'
+import CatalogoSelect from '../components/CatalogoSelect.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,7 +29,12 @@ const form = reactive({
   analisis: '',
   plan: '',
   cod_consulta_cups: '890201',
-  finalidad_tecnologia: '44',
+  finalidad_tecnologia: '15',
+  modalidad_grupo_servicio: '01',
+  grupo_servicios: '01',
+  fecha_egreso: '' as string | null,
+  condicion_egreso: null as string | null,
+  dx_causa_muerte: null as string | null,
   causa_motivo_atencion: '38',
   cod_servicio: 328,
   num_autorizacion: '',
@@ -44,7 +51,35 @@ const imc = computed(() => {
   return (peso / (talla / 100) ** 2).toFixed(1)
 })
 
+const plantillas = ref<Record<string, Record<string, string>>>({})
+const plantilla = ref('')
+const alertasFormula = ref<{ severidad: string; mensaje: string }[]>([])
+const citaId = (route.query.cita as string) || null
+const triageId = (route.query.triage as string) || null
+
+function aplicarPlantilla() {
+  const pl = plantillas.value[plantilla.value]
+  if (!pl) return
+  const f = form as unknown as Record<string, unknown>
+  for (const [campo, texto] of Object.entries(pl)) if (campo !== 'nombre' && !f[campo]) f[campo] = texto
+}
+
+let espera: ReturnType<typeof setTimeout> | undefined
+watch(() => form.prescripciones.map((r) => r.medicamento).join('|'), (meds) => {
+  clearTimeout(espera)
+  espera = setTimeout(async () => {
+    const lista = meds.split('|').filter((m) => m.trim().length > 2)
+    alertasFormula.value = lista.length
+      ? (await api.post('/clinica/revisar-prescripcion', { paciente_id: pacienteId, medicamentos: lista })).data : []
+  }, 600)
+})
+
 onMounted(async () => {
+  plantillas.value = (await api.get('/clinica/plantillas')).data
+  if (route.query.tipo === 'urgencias') {
+    Object.assign(form, { tipo: 'urgencias', grupo_servicios: '05', cod_consulta_cups: '890701', cod_servicio: 501 })
+    plantilla.value = 'urgencias'
+  }
   paciente.value = (await api.get(`/pacientes/${pacienteId}`)).data
   if (paciente.value?.alergias) form.antecedentes.alergicos = paciente.value.alergias
   if (atencionId.value) {
@@ -56,6 +91,11 @@ onMounted(async () => {
       signos_vitales: { ...form.signos_vitales, ...(a.signos_vitales || {}) },
       num_autorizacion: (a as unknown as { num_autorizacion: string }).num_autorizacion || '',
     })
+    const egreso = (a as unknown as { fecha_egreso: string | null }).fecha_egreso
+    if (egreso) {
+      const d = new Date(egreso)
+      form.fecha_egreso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+    }
   }
 })
 
@@ -91,6 +131,8 @@ function payload() {
   return {
     ...form,
     paciente_id: pacienteId,
+    cita_id: atencionId.value ? undefined : citaId,
+    fecha_egreso: form.fecha_egreso ? new Date(form.fecha_egreso).toISOString() : null,
     num_autorizacion: form.num_autorizacion || null,
     antecedentes: limpiar(form.antecedentes),
     signos_vitales: limpiar(form.signos_vitales),
@@ -108,6 +150,7 @@ async function guardar(firmar = false) {
     atencionId.value = data.id
     if (firmar) {
       await api.post(`/atenciones/${data.id}/firmar`)
+      if (triageId) await api.post(`/urgencias/triage/${triageId}/finalizar`, null, { params: { atencion_id: data.id } }).catch(() => null)
       router.push(`/atenciones/${data.id}`)
     } else {
       router.replace(`/pacientes/${pacienteId}/atencion/${data.id}`)
@@ -133,14 +176,21 @@ async function guardar(firmar = false) {
     <div v-if="paciente.alergias" class="alerta error"><strong>ALERGIAS:</strong> {{ paciente.alergias }}</div>
 
     <div class="tarjeta">
-      <h2>S · Subjetivo</h2>
+      <div class="fila entre">
+        <h2 style="margin: 0">S · Subjetivo</h2>
+        <label class="fila" style="flex-direction: row; align-items: center">Plantilla
+          <select v-model="plantilla" style="max-width: 280px" @change="aplicarPlantilla">
+            <option value="">—</option><option v-for="(pl, k) in plantillas" :key="k" :value="k">{{ pl.nombre }}</option>
+          </select>
+        </label>
+      </div>
       <div class="rejilla" style="margin-bottom: .75rem">
         <label>Tipo de atención
           <select v-model="form.tipo"><option value="consulta">Consulta externa</option><option value="control">Control</option><option value="urgencias">Urgencias</option><option value="hospitalizacion">Hospitalización</option></select>
         </label>
       </div>
-      <label>Motivo de consulta * <textarea v-model="form.motivo_consulta" placeholder="En palabras del paciente" /></label>
-      <label style="margin-top: .75rem">Enfermedad actual <textarea v-model="form.enfermedad_actual" /></label>
+      <CampoTexto v-model="form.motivo_consulta" etiqueta="Motivo de consulta *" placeholder="En palabras del paciente" />
+      <CampoTexto v-model="form.enfermedad_actual" etiqueta="Enfermedad actual" />
       <h3 style="margin-top: 1rem">Antecedentes</h3>
       <div class="rejilla">
         <label>Personales / patológicos <textarea v-model="form.antecedentes.personales" /></label>
@@ -151,7 +201,7 @@ async function guardar(firmar = false) {
         <label v-if="paciente.sexo === 'M'">Gineco-obstétricos <textarea v-model="form.antecedentes.gineco_obstetricos" placeholder="G_P_C_A_V_ FUM:" /></label>
         <label>Hábitos (tabaco, alcohol, actividad física) <textarea v-model="form.antecedentes.habitos" /></label>
       </div>
-      <label style="margin-top: .75rem">Revisión por sistemas <textarea v-model="form.revision_sistemas" /></label>
+      <CampoTexto v-model="form.revision_sistemas" etiqueta="Revisión por sistemas" />
     </div>
 
     <div class="tarjeta">
@@ -167,12 +217,12 @@ async function guardar(firmar = false) {
         <label>Talla (cm) <input v-model.number="form.signos_vitales.talla" type="number" /></label>
       </div>
       <p v-if="imc" class="suave">IMC calculado: <strong>{{ imc }}</strong></p>
-      <label style="margin-top: .75rem">Examen físico <textarea v-model="form.examen_fisico" /></label>
+      <CampoTexto v-model="form.examen_fisico" etiqueta="Examen físico" />
     </div>
 
     <div class="tarjeta">
       <h2>A · Análisis y diagnósticos (CIE-10)</h2>
-      <label>Análisis <textarea v-model="form.analisis" /></label>
+      <CampoTexto v-model="form.analisis" etiqueta="Análisis" />
       <div class="rejilla-2" style="margin-top: 1rem">
         <div>
           <h3>Diagnósticos</h3>
@@ -218,7 +268,7 @@ async function guardar(firmar = false) {
 
     <div class="tarjeta">
       <h2>P · Plan</h2>
-      <label>Plan de manejo, educación y recomendaciones <textarea v-model="form.plan" /></label>
+      <CampoTexto v-model="form.plan" etiqueta="Plan de manejo, educación y recomendaciones" />
 
       <h3 style="margin-top: 1rem">Fórmula médica</h3>
       <table>
@@ -237,6 +287,8 @@ async function guardar(firmar = false) {
       </table>
       <button type="button" class="btn sec peq" style="margin-top: .5rem"
         @click="form.prescripciones.push({ medicamento: '', dosis: '', via: 'oral', frecuencia: '', duracion_dias: 1, cantidad: 1 })">+ Medicamento</button>
+
+      <div v-for="a in alertasFormula" :key="a.mensaje" :class="['alerta', a.severidad === 'moderada' ? 'aviso' : 'error']" style="margin-top: .5rem">{{ a.mensaje }}</div>
 
       <h3 style="margin-top: 1rem">Procedimientos (CUPS)</h3>
       <table>
@@ -257,12 +309,19 @@ async function guardar(firmar = false) {
       <h2>Datos para facturación / RIPS</h2>
       <div class="rejilla">
         <label>CUPS de la consulta <input v-model="form.cod_consulta_cups" maxlength="6" /></label>
-        <label>Código de servicio (REPS) <input v-model.number="form.cod_servicio" type="number" /></label>
-        <label>Finalidad <input v-model="form.finalidad_tecnologia" maxlength="2" /></label>
-        <label>Causa motivo de atención <input v-model="form.causa_motivo_atencion" maxlength="2" /></label>
+        <label>Servicio (REPS) <CatalogoSelect v-model="form.cod_servicio" tipo="servicio" /></label>
+        <label>Finalidad <CatalogoSelect v-model="form.finalidad_tecnologia" tipo="finalidad" /></label>
+        <label>Causa motivo de atención <CatalogoSelect v-model="form.causa_motivo_atencion" tipo="causa_atencion" /></label>
+        <label>Modalidad <CatalogoSelect v-model="form.modalidad_grupo_servicio" tipo="modalidad" /></label>
+        <label>Grupo de servicios <CatalogoSelect v-model="form.grupo_servicios" tipo="grupo_servicio" /></label>
         <label>N.° autorización <input v-model="form.num_autorizacion" /></label>
         <label>Valor del servicio <input v-model.number="form.valor_servicio" type="number" min="0" /></label>
         <label>Cuota moderadora / copago <input v-model.number="form.valor_pago_moderador" type="number" min="0" /></label>
+      </div>
+      <div v-if="form.tipo === 'urgencias'" class="rejilla" style="margin-top: .75rem">
+        <label>Fecha y hora de egreso de urgencias <input v-model="form.fecha_egreso" type="datetime-local" /></label>
+        <label>Condición de egreso <CatalogoSelect v-model="form.condicion_egreso" tipo="condicion_egreso" vacio="" /></label>
+        <label v-if="form.condicion_egreso === '02'">Dx causa de muerte <input v-model="form.dx_causa_muerte" /></label>
       </div>
       <p class="suave">Valide los códigos contra las tablas de referencia vigentes de SISPRO.</p>
     </div>

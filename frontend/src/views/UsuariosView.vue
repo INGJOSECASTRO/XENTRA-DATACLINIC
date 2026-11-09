@@ -21,6 +21,11 @@ async function crear() {
     error.value = mensajeError(e)
   }
 }
+async function quitarMfa(u: Usuario) {
+  if (!confirm(`¿Desactivar el segundo factor de ${u.nombres}? Verifique antes su identidad.`)) return
+  await api.post(`/auth/mfa/desactivar/${u.id}`)
+  await cargar()
+}
 async function cambiar(u: Usuario) {
   try {
     await api.patch(`/auth/usuarios/${u.id}/estado`, null, { params: { activo: !u.activo } })
@@ -46,7 +51,8 @@ onMounted(cargar)
       <label>Rol
         <select v-model="form.rol">
           <option value="medico">Médico</option><option value="enfermeria">Enfermería</option><option value="admisiones">Admisiones</option>
-          <option value="facturacion">Facturación</option><option value="auditor">Auditor</option><option value="admin">Administrador</option>
+          <option value="facturacion">Facturación</option><option value="auditor">Auditor</option><option value="farmacia">Farmacia</option>
+          <option value="laboratorio">Laboratorio</option><option value="admin">Administrador</option>
         </select>
       </label>
       <label>Registro profesional (ReTHUS) <input v-model="form.registro_profesional" /></label>
@@ -56,10 +62,11 @@ onMounted(cargar)
   </form>
   <div class="tarjeta">
     <table>
-      <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Registro</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Registro</th><th>MFA</th><th>Estado</th><th></th></tr></thead>
       <tbody>
         <tr v-for="u in usuarios" :key="u.id">
           <td>{{ u.nombres }} {{ u.apellidos }}</td><td>{{ u.email }}</td><td>{{ u.rol }}</td><td>{{ u.registro_profesional || '—' }}</td>
+          <td><button v-if="u.mfa_activo" class="btn sec peq" title="Quitar segundo factor" @click="quitarMfa(u)">Activo ✕</button><span v-else class="suave">—</span></td>
           <td><span :class="['etiqueta', u.activo ? 'firmada' : 'borrador']">{{ u.activo ? 'activo' : 'inactivo' }}</span></td>
           <td><button class="btn sec peq" @click="cambiar(u)">{{ u.activo ? 'Desactivar' : 'Activar' }}</button></td>
         </tr>

@@ -1,4 +1,4 @@
-export type Rol = 'admin' | 'medico' | 'enfermeria' | 'facturacion' | 'auditor' | 'admisiones'
+export type Rol = 'admin' | 'medico' | 'enfermeria' | 'facturacion' | 'auditor' | 'admisiones' | 'farmacia' | 'laboratorio' | 'paciente'
 
 export interface Usuario {
   id: string
@@ -11,6 +11,8 @@ export interface Usuario {
   registro_profesional: string | null
   especialidad: string | null
   activo: boolean
+  mfa_activo?: boolean
+  paciente_id?: string | null
 }
 
 export interface Paciente {
@@ -55,6 +57,7 @@ export interface Procedimiento {
 }
 
 export interface Prescripcion {
+  id?: string
   medicamento: string
   dosis: string
   via: string
@@ -134,4 +137,10 @@ export interface Bloque {
   hash_anterior: string
   hash: string
   ip_origen: string | null
+}
+
+export interface ItemCatalogo {
+  codigo: string
+  descripcion: string
+  datos: Record<string, unknown> | null
 }

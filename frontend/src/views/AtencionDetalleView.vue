@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { api, mensajeError } from '../api/cliente'
+import { abrirArchivo, api, mensajeError } from '../api/cliente'
 import type { Atencion } from '../api/tipos'
 import { useAuth } from '../stores/auth'
 
@@ -45,7 +45,8 @@ onMounted(cargar)
       <div class="fila">
         <span :class="['etiqueta', a.estado]">{{ a.estado }}</span>
         <RouterLink class="btn sec" :to="`/pacientes/${a.paciente_id}`">Volver al paciente</RouterLink>
-        <button class="btn sec" onclick="window.print()">Imprimir</button>
+        <button class="btn sec" @click="abrirArchivo(`/atenciones/${a.id}/pdf`)">PDF historia</button>
+        <button v-if="a.prescripciones?.length" class="btn sec" @click="abrirArchivo(`/atenciones/${a.id}/pdf`, { documento: 'formula' })">PDF fórmula</button>
       </div>
     </div>
 
