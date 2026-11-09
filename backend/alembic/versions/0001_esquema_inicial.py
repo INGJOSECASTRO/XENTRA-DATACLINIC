@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-from app.core.inmutabilidad import SQL as SQL_TRIGGERS
+from app.core.inmutabilidad import SQL_V1 as SQL_TRIGGERS
 
 # revision identifiers, used by Alembic.
 revision: str = '0001'

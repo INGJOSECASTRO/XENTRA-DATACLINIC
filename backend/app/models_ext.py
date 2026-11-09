@@ -352,3 +352,106 @@ class AnclajeLedger(Base):
     estado: Mapped[str] = mapped_column(String(15))  # enviado | fallido | local
     comprobante: Mapped[str | None] = mapped_column(Text)  # base64
     detalle: Mapped[str | None] = mapped_column(Text)
+
+
+# ----------------------------------------------------------------------------- RDA (Resolución 1888 de 2025)
+class RdaEnvio(Base):
+    """Resumen Digital de Atención generado y su estado de transmisión a la IHCE (cola con reintentos)."""
+
+    __tablename__ = "rda_envios"
+    id: Mapped[uuid.UUID] = _id()
+    tipo: Mapped[str] = mapped_column(String(20), index=True)  # consulta | urgencias | hospitalizacion | paciente
+    entidad_id: Mapped[str] = mapped_column(String(36), index=True)
+    paciente_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("pacientes.id"), index=True)
+    generado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora_utc)
+    bundle: Mapped[dict] = mapped_column(JSONType)
+    hash_bundle: Mapped[str] = mapped_column(String(64))
+    estado: Mapped[str] = mapped_column(String(15), default="pendiente", index=True)  # pendiente|enviado|error|simulado
+    intentos: Mapped[int] = mapped_column(Integer, default=0)
+    ultimo_intento: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    respuesta: Mapped[dict | None] = mapped_column(JSONType)
+    errores_validacion: Mapped[list | None] = mapped_column(JSONType)
+
+
+# ----------------------------------------------------------------------------- Inteligencia de negocio
+class ReporteGuardado(Base):
+    __tablename__ = "reportes_guardados"
+    id: Mapped[uuid.UUID] = _id()
+    nombre: Mapped[str] = mapped_column(String(150))
+    descripcion: Mapped[str | None] = mapped_column(Text)
+    definicion: Mapped[dict] = mapped_column(JSONType)  # dataset, dimensiones, medidas, filtros, grafico
+    roles: Mapped[list] = mapped_column(JSONType, default=list)  # roles que lo ven (vacío = solo el autor y admin)
+    creado_por: Mapped[uuid.UUID] = mapped_column(ForeignKey("usuarios.id"))
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora_utc)
+
+
+# ----------------------------------------------------------------------------- Módulos dinámicos (sin programar)
+class ModuloDinamico(Base):
+    """Módulo creado por el administrador: formulario con campos tipados, roles y opción de sellado."""
+
+    __tablename__ = "modulos_dinamicos"
+    id: Mapped[uuid.UUID] = _id()
+    clave: Mapped[str] = mapped_column(String(40), unique=True)
+    nombre: Mapped[str] = mapped_column(String(120))
+    descripcion: Mapped[str | None] = mapped_column(Text)
+    categoria: Mapped[str] = mapped_column(String(40), default="asistencial")  # asistencial | administrativo | calidad
+    campos: Mapped[list] = mapped_column(JSONType)  # [{clave, etiqueta, tipo, requerido, opciones, min, max}]
+    roles_lectura: Mapped[list] = mapped_column(JSONType, default=list)
+    roles_escritura: Mapped[list] = mapped_column(JSONType, default=list)
+    por_paciente: Mapped[bool] = mapped_column(Boolean, default=True)
+    sellar_al_guardar: Mapped[bool] = mapped_column(Boolean, default=False)  # registro inalterable (dato clínico)
+    activo: Mapped[bool] = mapped_column(Boolean, default=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    creado_por: Mapped[uuid.UUID] = mapped_column(ForeignKey("usuarios.id"))
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora_utc)
+
+
+class RegistroModulo(Base):
+    __tablename__ = "registros_modulo"
+    id: Mapped[uuid.UUID] = _id()
+    modulo_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("modulos_dinamicos.id"), index=True)
+    version_modulo: Mapped[int] = mapped_column(Integer, default=1)
+    paciente_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("pacientes.id"), index=True)
+    datos: Mapped[dict] = mapped_column(JSONType)
+    sellado: Mapped[bool] = mapped_column(Boolean, default=False)
+    hash_contenido: Mapped[str] = mapped_column(String(64))
+    autor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("usuarios.id"))
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora_utc)
+
+    autor: Mapped[Usuario] = relationship()
+
+
+# ----------------------------------------------------------------------------- Soporte y continuidad
+class Ticket(Base):
+    """Mesa de ayuda interna con acuerdos de nivel de servicio (ANS/SLA)."""
+
+    __tablename__ = "tickets"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    titulo: Mapped[str] = mapped_column(String(200))
+    descripcion: Mapped[str] = mapped_column(Text)
+    categoria: Mapped[str] = mapped_column(String(30), default="incidente")  # incidente | solicitud | mejora | seguridad
+    prioridad: Mapped[str] = mapped_column(String(10), default="media")  # critica | alta | media | baja
+    modulo: Mapped[str | None] = mapped_column(String(60))
+    codigo_error: Mapped[str | None] = mapped_column(String(40))  # ID de error que muestra la pantalla
+    estado: Mapped[str] = mapped_column(String(15), default="abierto")  # abierto | en_proceso | resuelto | cerrado
+    creado_por: Mapped[uuid.UUID] = mapped_column(ForeignKey("usuarios.id"))
+    asignado_a: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("usuarios.id"))
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora_utc)
+    vence_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    resuelto_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    solucion: Mapped[str | None] = mapped_column(Text)
+    comentarios: Mapped[list] = mapped_column(JSONType, default=list)
+
+    autor: Mapped[Usuario] = relationship(foreign_keys=[creado_por])
+
+
+class AvisoSistema(Base):
+    """Avisos visibles para todos: mantenimientos programados, contingencias, novedades."""
+
+    __tablename__ = "avisos_sistema"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    nivel: Mapped[str] = mapped_column(String(10), default="info")  # info | aviso | critico
+    mensaje: Mapped[str] = mapped_column(String(500))
+    desde: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora_utc)
+    hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    creado_por: Mapped[uuid.UUID] = mapped_column(ForeignKey("usuarios.id"))

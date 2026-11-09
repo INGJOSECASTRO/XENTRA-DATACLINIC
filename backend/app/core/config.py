@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     DIAN_MODO: str = "simulado"
     DIAN_PROVEEDOR_URL: str = ""
     DIAN_PROVEEDOR_TOKEN: str = ""
+    # RDA - Resolución 1888 de 2025 (Interoperabilidad de Historia Clínica Electrónica, IHCE)
+    RDA_MODO: str = "simulado"  # simulado | real | desactivado
+    IHCE_URL: str = ""  # API Gateway de la IHCE asignado por el Ministerio
+    IHCE_TOKEN: str = ""
+    RDA_PERFIL_BASE: str = "https://fhir.minsalud.gov.co/rda/StructureDefinition"  # verificar con la guía oficial
+    RDA_MAX_INTENTOS: int = 8
     ANCLAJE_MODO: str = "local"  # local | opentimestamps
     OTS_CALENDARIOS: str = "https://a.pool.opentimestamps.org,https://b.pool.opentimestamps.org"
     FACTURA_PREFIJO: str = "FEV"

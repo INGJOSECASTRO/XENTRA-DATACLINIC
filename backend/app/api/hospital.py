@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -286,7 +286,7 @@ def trasladar(hosp_id: uuid.UUID, cama_id: uuid.UUID, request: Request, db: Sess
 
 
 @router.post("/hospitalizaciones/{hosp_id}/egreso", response_model=HospitalizacionOut)
-def egresar(hosp_id: uuid.UUID, datos: EgresoIn, request: Request, db: Session = Depends(get_db),
+def egresar(hosp_id: uuid.UUID, datos: EgresoIn, request: Request, tareas: BackgroundTasks, db: Session = Depends(get_db),
             usuario: Usuario = Depends(requiere_rol(*MEDICOS))):
     h = _hosp(db, hosp_id, activa=True)
     if datos.condicion_egreso == "02" and not datos.dx_causa_muerte:
@@ -305,6 +305,9 @@ def egresar(hosp_id: uuid.UUID, datos: EgresoIn, request: Request, db: Session =
     registrar_evento(db, accion="HOSPITALIZACION_EGRESO", entidad="hospitalizacion", entidad_id=h.id,
                      datos={"hash_epicrisis": h.hash_epicrisis, "condicion": h.condicion_egreso},
                      usuario_id=usuario.id, ip=ip_cliente(request))
+    from app.api.rda import generar_y_encolar
+
+    generar_y_encolar(db, "hospitalizacion", h, tareas)  # RDA - Resolución 1888 de 2025
     db.commit()
     db.refresh(h)
     return h

@@ -40,17 +40,23 @@ services:
     env_file: .env
     environment:
       AUTO_CREAR_TABLAS: "false"
+    volumes:
+      - ./backups:/backups:ro   # solo lectura: para mostrar el estado de los respaldos
     depends_on:
       migrate:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/salud', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     ports:
       - "127.0.0.1:8000:8000"
 
+  # Sin dependencia del backend: la aplicación abre y muestra un aviso claro aunque la API falle.
   frontend:
     build: ./frontend
     restart: unless-stopped
-    depends_on:
-      - backend
     ports:
       - "8080:80"
 

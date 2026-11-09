@@ -6,7 +6,8 @@ de historia clínica ya firmados o sus diagnósticos, procedimientos y fórmulas
 """
 from sqlalchemy.engine import Engine
 
-SQL = r"""
+# Versión 1 (migración 0001). NO modificar: las migraciones ya aplicadas dependen de este texto.
+SQL_V1 = r"""
 CREATE OR REPLACE FUNCTION hce_ledger_inmutable() RETURNS trigger AS $$
 BEGIN
   RAISE EXCEPTION 'El ledger es inmutable: operación % no permitida', TG_OP;
@@ -98,6 +99,15 @@ DROP TRIGGER IF EXISTS trg_resultado_sellado ON ordenes_servicio;
 CREATE TRIGGER trg_resultado_sellado BEFORE UPDATE OR DELETE ON ordenes_servicio
   FOR EACH ROW WHEN (OLD.estado = 'validada') EXECUTE FUNCTION hce_sellado();
 """
+
+# Versión 2 (migración 0002): módulos dinámicos
+SQL_V2 = r"""
+DROP TRIGGER IF EXISTS trg_registro_modulo_sellado ON registros_modulo;
+CREATE TRIGGER trg_registro_modulo_sellado BEFORE UPDATE OR DELETE ON registros_modulo
+  FOR EACH ROW WHEN (OLD.sellado) EXECUTE FUNCTION hce_solo_insercion();
+"""
+
+SQL = SQL_V1 + SQL_V2  # usado en desarrollo/pruebas (AUTO_CREAR_TABLAS=true)
 
 
 def instalar_triggers(engine: Engine) -> None:

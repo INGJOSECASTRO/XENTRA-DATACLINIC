@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -155,7 +155,7 @@ def eliminar_borrador(atencion_id: uuid.UUID, request: Request, db: Session = De
 
 
 @router.post("/{atencion_id}/firmar", response_model=AtencionOut)
-def firmar(atencion_id: uuid.UUID, request: Request, db: Session = Depends(get_db),
+def firmar(atencion_id: uuid.UUID, request: Request, tareas: BackgroundTasks, db: Session = Depends(get_db),
            usuario: Usuario = Depends(requiere_rol(*CLINICOS))):
     a = obtener(db, atencion_id)
     if a.estado == "firmada":
@@ -174,6 +174,9 @@ def firmar(atencion_id: uuid.UUID, request: Request, db: Session = Depends(get_d
     if eventos:
         registrar_evento(db, accion="EVENTO_SIVIGILA", entidad="atencion", entidad_id=a.id, datos=eventos,
                          usuario_id=usuario.id, ip=ip_cliente(request))
+    from app.api.rda import generar_y_encolar
+
+    generar_y_encolar(db, "atencion", a, tareas)  # RDA - Resolución 1888 de 2025
     db.commit()
     return salida(a)
 
