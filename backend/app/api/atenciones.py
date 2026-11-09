@@ -96,6 +96,17 @@ def crear(datos: AtencionCrear, request: Request, db: Session = Depends(get_db),
     _aplicar(db, a, datos, paciente)
     db.add(a)
     db.flush()
+    if datos.cita_id:
+        from app.models_ext import Cita
+
+        cita = db.get(Cita, datos.cita_id)
+        if not cita or cita.paciente_id != paciente.id:
+            raise HTTPException(422, "La cita no corresponde al paciente")
+        if cita.estado in ("cancelada", "no_asistio", "atendida"):
+            raise HTTPException(409, f"La cita está en estado '{cita.estado}'")
+        cita.estado, cita.atencion_id = "atendida", a.id
+        if cita.modalidad == "telemedicina":
+            a.modalidad_grupo_servicio = "06"
     registrar_evento(db, accion="ATENCION_CREADA", entidad="atencion", entidad_id=a.id,
                      datos={"paciente_id": str(paciente.id)}, usuario_id=usuario.id, ip=ip_cliente(request))
     db.commit()

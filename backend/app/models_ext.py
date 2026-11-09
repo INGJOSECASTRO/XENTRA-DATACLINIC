@@ -288,6 +288,11 @@ class MovimientoInventario(Base):
     orden_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("ordenes_medicas.id"))
     motivo: Mapped[str | None] = mapped_column(String(200))
 
+    producto: Mapped["Producto"] = relationship()
+    lote: Mapped["Lote | None"] = relationship()
+    paciente: Mapped[Paciente | None] = relationship()
+    usuario: Mapped[Usuario] = relationship()
+
 
 # ----------------------------------------------------------------------------- Laboratorio e imágenes
 class OrdenServicio(Base):

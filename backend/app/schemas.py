@@ -222,6 +222,7 @@ class AtencionGuardar(BaseModel):
 
 class AtencionCrear(AtencionGuardar):
     paciente_id: uuid.UUID
+    cita_id: uuid.UUID | None = None
 
 
 class NotaIn(BaseModel):
