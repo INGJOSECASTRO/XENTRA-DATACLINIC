@@ -22,7 +22,9 @@ const servicios = computed(() => [...new Set(camas.value.map((c) => c.servicio))
 const ocupacion = computed(() => camas.value.length ? Math.round((100 * camas.value.filter((c) => c.estado === 'ocupada').length) / camas.value.length) : 0)
 
 async function cargar() {
-  ;[camas.value, censo.value] = await Promise.all([api.get('/camas').then((r) => r.data), api.get('/hospitalizaciones').then((r) => r.data)])
+  // El administrador técnico ve la ocupación de camas, no la identidad de los pacientes
+  camas.value = (await api.get('/camas')).data
+  censo.value = auth.tiene('admin_tecnico') ? [] : (await api.get('/hospitalizaciones')).data
 }
 async function buscar() {
   pacientes.value = busqueda.value.length > 2 ? (await api.get('/pacientes', { params: { q: busqueda.value, limite: 8 } })).data : []
@@ -62,11 +64,11 @@ onMounted(cargar)
           @click="c.hospitalizacion_id ? router.push(`/hospitalizacion/${c.hospitalizacion_id}`) : (form.cama_id = c.estado === 'disponible' ? c.id : form.cama_id)">
           <strong>{{ c.codigo }}</strong>
           <small>{{ c.paciente || c.estado }}</small>
-          <button v-if="c.estado === 'mantenimiento' && auth.tiene('enfermeria', 'admin')" class="btn sec peq" @click.stop="liberar(c)">Lista</button>
+          <button v-if="c.estado === 'mantenimiento' && auth.tiene('enfermeria', 'admin', 'admin_tecnico')" class="btn sec peq" @click.stop="liberar(c)">Lista</button>
         </div>
       </div>
     </div>
-    <form v-if="auth.tiene('admin')" class="fila" @submit.prevent="crearCama">
+    <form v-if="auth.tiene('admin', 'admin_tecnico')" class="fila" @submit.prevent="crearCama">
       <input v-model="nuevaCama.codigo" placeholder="Código nueva cama" style="max-width: 180px" required />
       <select v-model="nuevaCama.servicio" style="max-width: 180px">
         <option v-for="s in ['adultos', 'pediatria', 'obstetricia', 'uci', 'intermedios', 'observacion', 'neonatos']" :key="s">{{ s }}</option>
@@ -75,7 +77,7 @@ onMounted(cargar)
     </form>
   </div>
 
-  <div class="rejilla-2">
+  <div v-if="!auth.tiene('admin_tecnico')" class="rejilla-2">
     <div class="tarjeta">
       <h2>Censo ({{ censo.length }} pacientes)</h2>
       <table>

@@ -23,7 +23,7 @@ const ok = ref('')
 const firma = ref<string | null>(null)
 const cons = reactive({ plantilla: '', titulo: '', texto: '', decision: 'acepta', firmante_nombre: '', firmante_documento: '', parentesco: 'paciente' })
 const orden = reactive({ tipo: 'laboratorio', cod_cups: '', descripcion: '', prioridad: 'rutina', indicaciones: '' })
-const clinico = auth.tiene('medico', 'enfermeria', 'auditor', 'admin')
+const clinico = auth.tiene('medico', 'enfermeria', 'auditor', 'admin', 'estudiante')
 
 async function cargar() {
   p.value = (await api.get(`/pacientes/${id}`)).data
@@ -34,8 +34,11 @@ async function cargar() {
   }
 }
 async function verResumen() { resumen.value = (await api.get(`/pacientes/${id}/resumen-ia`)).data }
+const portalActivo = ref(false)
 function abrir(a: Atencion) {
-  if (a.estado === 'borrador' && a.profesional.id === auth.usuario?.id) router.push(`/pacientes/${id}/atencion/${a.id}`)
+  const propio = a.profesional.id === auth.usuario?.id
+  const refrendable = auth.tiene('medico', 'admin') && a.profesional.rol === 'estudiante'
+  if (a.estado === 'borrador' && (propio || refrendable)) router.push(`/pacientes/${id}/atencion/${a.id}`)
   else router.push(`/atenciones/${a.id}`)
 }
 function elegirPlantilla() {
@@ -58,6 +61,7 @@ const accesoPortal = () => accion(async () => {
 }, 'Acceso al portal creado')
 
 onMounted(async () => {
+  portalActivo.value = (await api.get('/salud')).data.portal_paciente
   await cargar()
   if (auth.tiene('medico', 'enfermeria', 'admin')) plantillasC.value = (await api.get('/consentimientos/plantillas')).data
 })
@@ -72,8 +76,8 @@ onMounted(async () => {
       </div>
       <div class="fila">
         <button v-if="clinico" class="btn sec" @click="verResumen">Resumen IA</button>
-        <button v-if="auth.tiene('admisiones', 'admin')" class="btn sec" @click="accesoPortal">Crear acceso al portal</button>
-        <RouterLink v-if="auth.tiene('medico', 'enfermeria', 'admin')" class="btn" :to="`/pacientes/${p.id}/atencion`">+ Nueva atención</RouterLink>
+        <button v-if="portalActivo && auth.tiene('admisiones', 'admin')" class="btn sec" @click="accesoPortal">Crear acceso al portal</button>
+        <RouterLink v-if="auth.tiene('medico', 'enfermeria', 'admin', 'estudiante')" class="btn" :to="`/pacientes/${p.id}/atencion`">+ Nueva atención</RouterLink>
       </div>
     </div>
     <div v-if="p.alergias" class="alerta error"><strong>ALERGIAS:</strong> {{ p.alergias }}</div>

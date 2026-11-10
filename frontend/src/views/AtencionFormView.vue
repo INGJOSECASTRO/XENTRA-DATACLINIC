@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api, mensajeError } from '../api/cliente'
 import type { Atencion, CIE10, Diagnostico, Paciente, Prescripcion, Procedimiento, Sugerencia } from '../api/tipos'
 import SelectorCIE10 from '../components/SelectorCIE10.vue'
+import { useAuth } from '../stores/auth'
 import CampoTexto from '../components/CampoTexto.vue'
 import CatalogoSelect from '../components/CatalogoSelect.vue'
 
@@ -51,6 +52,10 @@ const imc = computed(() => {
   return (peso / (talla / 100) ** 2).toFixed(1)
 })
 
+const auth = useAuth()
+const esEstudiante = auth.tiene('estudiante')
+const autor = ref<{ id: string; nombre_completo?: string; nombres: string; apellidos: string; rol: string } | null>(null)
+const refrendo = computed(() => !!autor.value && autor.value.id !== auth.usuario?.id)
 const plantillas = ref<Record<string, Record<string, string>>>({})
 const plantilla = ref('')
 const alertasFormula = ref<{ severidad: string; mensaje: string }[]>([])
@@ -85,6 +90,7 @@ onMounted(async () => {
   if (atencionId.value) {
     const a: Atencion = (await api.get(`/atenciones/${atencionId.value}`)).data
     if (a.estado === 'firmada') return router.replace(`/atenciones/${a.id}`)
+    autor.value = a.profesional
     Object.assign(form, {
       ...a,
       antecedentes: { ...form.antecedentes, ...((a as unknown as { antecedentes: object }).antecedentes || {}) },
@@ -141,7 +147,9 @@ function payload() {
 
 async function guardar(firmar = false) {
   error.value = ''
-  if (firmar && !confirm('Al firmar, el folio queda SELLADO y no podrá modificarse (solo notas aclaratorias). ¿Firmar ahora?')) return
+  const texto = refrendo.value ? 'Al REFRENDAR, usted firma y asume la responsabilidad del registro del estudiante. El folio quedará sellado. ¿Continuar?'
+    : 'Al firmar, el folio queda SELLADO y no podrá modificarse (solo notas aclaratorias). ¿Firmar ahora?'
+  if (firmar && !confirm(texto)) return
   guardando.value = true
   try {
     const { data } = atencionId.value
@@ -154,7 +162,7 @@ async function guardar(firmar = false) {
       router.push(`/atenciones/${data.id}`)
     } else {
       router.replace(`/pacientes/${pacienteId}/atencion/${data.id}`)
-      alert('Borrador guardado')
+      alert(esEstudiante ? 'Borrador guardado. Quedó pendiente de refrendo por su docente.' : 'Borrador guardado')
     }
   } catch (e) {
     error.value = mensajeError(e)
@@ -174,6 +182,8 @@ async function guardar(firmar = false) {
       <RouterLink class="btn sec" :to="`/pacientes/${pacienteId}`">Volver</RouterLink>
     </div>
     <div v-if="paciente.alergias" class="alerta error"><strong>ALERGIAS:</strong> {{ paciente.alergias }}</div>
+    <div v-if="esEstudiante" class="alerta aviso">Usted registra como <strong>estudiante</strong>: guarde el borrador; su docente lo revisará y lo refrendará con su firma (Decreto 2376 de 2010).</div>
+    <div v-if="refrendo" class="alerta aviso">Registro elaborado por el estudiante <strong>{{ autor?.nombres }} {{ autor?.apellidos }}</strong>. Revíselo, corríjalo si es necesario y refréndelo.</div>
 
     <div class="tarjeta">
       <div class="fila entre">
@@ -329,7 +339,8 @@ async function guardar(firmar = false) {
     <div v-if="error" class="alerta error">{{ error }}</div>
     <div class="fila" style="justify-content: flex-end; margin-bottom: 2rem">
       <button class="btn sec" :disabled="guardando" @click="guardar(false)">Guardar borrador</button>
-      <button class="btn" :disabled="guardando || !form.diagnosticos.length" @click="guardar(true)">Firmar y cerrar folio</button>
+      <button v-if="!esEstudiante" class="btn" :disabled="guardando || !form.diagnosticos.length" @click="guardar(true)">
+        {{ refrendo ? 'Refrendar y firmar' : 'Firmar y cerrar folio' }}</button>
     </div>
   </div>
 </template>

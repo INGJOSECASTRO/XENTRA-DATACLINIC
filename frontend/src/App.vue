@@ -9,24 +9,25 @@ const auth = useAuth()
 const route = useRoute()
 const router = useRouter()
 
-const PERSONAL: Rol[] = ['admin', 'medico', 'enfermeria', 'facturacion', 'auditor', 'admisiones', 'farmacia', 'laboratorio']
+const PERSONAL: Rol[] = ['admin', 'admin_tecnico', 'medico', 'enfermeria', 'estudiante', 'facturacion', 'auditor', 'auditor_sistemas',
+  'admisiones', 'farmacia', 'laboratorio', 'auxiliar_laboratorio']
 const menu: { a: string; texto: string; roles: Rol[] }[] = [
   { a: '/portal', texto: 'Mi salud', roles: ['paciente'] },
   { a: '/', texto: 'Inicio', roles: PERSONAL },
-  { a: '/pacientes', texto: 'Pacientes', roles: ['admin', 'medico', 'enfermeria', 'admisiones', 'auditor'] },
+  { a: '/pacientes', texto: 'Pacientes', roles: ['admin', 'medico', 'enfermeria', 'estudiante', 'admisiones', 'auditor'] },
   { a: '/agenda', texto: 'Agenda', roles: ['admisiones', 'medico', 'enfermeria', 'admin'] },
   { a: '/urgencias', texto: 'Urgencias', roles: ['medico', 'enfermeria', 'admin', 'admisiones'] },
-  { a: '/hospitalizacion', texto: 'Hospitalización', roles: ['medico', 'enfermeria', 'admin', 'admisiones', 'auditor'] },
-  { a: '/laboratorio', texto: 'Laboratorio e imágenes', roles: ['laboratorio', 'medico', 'enfermeria', 'admin'] },
+  { a: '/hospitalizacion', texto: 'Hospitalización', roles: ['medico', 'enfermeria', 'admin', 'admisiones', 'auditor', 'admin_tecnico'] },
+  { a: '/laboratorio', texto: 'Laboratorio e imágenes', roles: ['laboratorio', 'auxiliar_laboratorio', 'medico', 'enfermeria', 'admin'] },
   { a: '/farmacia', texto: 'Farmacia', roles: ['farmacia', 'admin'] },
   { a: '/facturacion', texto: 'Facturación electrónica', roles: ['facturacion', 'admin', 'auditor'] },
   { a: '/rips', texto: 'RIPS (generar y validar)', roles: ['facturacion', 'admin'] },
-  { a: '/reportes', texto: 'Indicadores', roles: ['admin', 'auditor', 'medico'] },
-  { a: '/bi', texto: 'Inteligencia de negocio', roles: PERSONAL },
+  { a: '/reportes', texto: 'Indicadores', roles: ['admin', 'auditor', 'auditor_sistemas', 'medico'] },
+  { a: '/bi', texto: 'Inteligencia de negocio', roles: ['admin', 'medico', 'enfermeria', 'facturacion', 'auditor', 'admisiones', 'farmacia', 'laboratorio'] },
   { a: '/modulos', texto: 'Módulos adicionales', roles: PERSONAL },
   { a: '/soporte', texto: 'Soporte y continuidad', roles: PERSONAL },
-  { a: '/auditoria', texto: 'Seguridad blockchain', roles: ['auditor', 'admin'] },
-  { a: '/usuarios', texto: 'Usuarios', roles: ['admin'] },
+  { a: '/auditoria', texto: 'Seguridad blockchain', roles: ['auditor', 'auditor_sistemas', 'admin', 'admin_tecnico'] },
+  { a: '/usuarios', texto: 'Usuarios', roles: ['admin', 'admin_tecnico'] },
   { a: '/cuenta', texto: 'Mi cuenta y seguridad', roles: [...PERSONAL, 'paciente'] },
 ]
 const visibles = computed(() => menu.filter((m) => auth.tiene(...m.roles)))

@@ -9,7 +9,8 @@ interface Ticket { id: number; titulo: string; descripcion: string; categoria: s
   comentarios: { autor: string; fecha: string; texto: string }[]; vencido: boolean }
 
 const auth = useAuth()
-const gestion = auth.tiene('admin', 'auditor')
+const gestion = auth.tiene('admin', 'auditor', 'admin_tecnico', 'auditor_sistemas')
+const soporte = auth.tiene('admin', 'admin_tecnico')
 const pestana = ref(gestion ? 'estado' : 'tickets')
 const estado = ref<any>(null)
 const tickets = ref<Ticket[]>([])
@@ -106,7 +107,7 @@ onMounted(cargar)
       <button class="btn" style="margin-top: .6rem">Enviar a soporte</button>
     </form>
     <div class="tarjeta">
-      <h2>{{ gestion && auth.tiene('admin') ? 'Todos los tickets' : 'Mis tickets' }}</h2>
+      <h2>{{ soporte ? 'Todos los tickets' : 'Mis tickets' }}</h2>
       <table>
         <tbody>
           <template v-for="t in tickets" :key="t.id">
@@ -127,7 +128,7 @@ onMounted(cargar)
                 <div class="fila" style="margin-top: .5rem">
                   <input v-model="comentario" placeholder="Agregar comentario…" style="max-width: 400px" />
                   <button class="btn sec peq" @click="comentar(t)">Comentar</button>
-                  <template v-if="auth.tiene('admin') && !['resuelto', 'cerrado'].includes(t.estado)">
+                  <template v-if="soporte && !['resuelto', 'cerrado'].includes(t.estado)">
                     <button class="btn sec peq" @click="actualizar(t, { estado: 'en_proceso' })">En proceso</button>
                     <button class="btn peq" @click="resolver(t)">Resolver</button>
                   </template>
@@ -202,7 +203,7 @@ onMounted(cargar)
     </div>
   </template>
 
-  <form v-if="pestana === 'avisos' && auth.tiene('admin')" class="tarjeta" @submit.prevent="publicarAviso">
+  <form v-if="pestana === 'avisos' && soporte" class="tarjeta" @submit.prevent="publicarAviso">
     <h2>Publicar aviso para todos los usuarios</h2>
     <div class="rejilla">
       <label>Nivel <select v-model="aviso.nivel"><option value="info">Información</option><option value="aviso">Aviso (mantenimiento)</option><option value="critico">Crítico (contingencia)</option></select></label>

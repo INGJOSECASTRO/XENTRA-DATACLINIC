@@ -40,7 +40,8 @@ onMounted(cargar)
       <div>
         <h1 style="margin: 0">Folio #{{ a.consecutivo }} · <span style="text-transform: capitalize">{{ a.tipo }}</span></h1>
         <p class="suave">{{ fecha(a.fecha_inicio) }} · {{ a.profesional.nombres }} {{ a.profesional.apellidos }}
-          ({{ a.profesional.especialidad || a.profesional.rol }}, reg. {{ a.profesional.registro_profesional || '—' }})</p>
+          ({{ a.profesional.especialidad || a.profesional.rol }}, reg. {{ a.profesional.registro_profesional || '—' }})
+          <template v-if="a.supervisor"><br />Refrendado por el docente {{ a.supervisor.nombres }} {{ a.supervisor.apellidos }} (reg. {{ a.supervisor.registro_profesional || '—' }})</template></p>
       </div>
       <div class="fila">
         <span :class="['etiqueta', a.estado]">{{ a.estado }}</span>

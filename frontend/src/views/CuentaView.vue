@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { api, mensajeError } from '../api/cliente'
 import { useAuth } from '../stores/auth'
 
 const auth = useAuth()
+const router = useRouter()
 const qr = ref('')
 const secreto = ref('')
 const codigo = ref('')
@@ -28,6 +30,7 @@ async function activar() {
     await auth.refrescarUsuario()
     qr.value = ''
     msg.value = 'Segundo factor activado. Desde ahora se pedirá el código al iniciar sesión.'
+    if (!auth.usuario?.debe_cambiar_clave) setTimeout(() => router.push('/'), 1200)
   } catch (e) {
     error.value = mensajeError(e)
   }
@@ -39,6 +42,8 @@ async function cambiarClave() {
     await api.post('/auth/cambiar-clave', { actual: clave.value.actual, nueva: clave.value.nueva })
     clave.value = { actual: '', nueva: '', repetir: '' }
     msg.value = 'Contraseña actualizada'
+    await auth.refrescarUsuario()
+    if (!(auth.usuario?.mfa_obligatorio && !auth.usuario?.mfa_activo)) setTimeout(() => router.push('/'), 1200)
   } catch (e) {
     error.value = mensajeError(e)
   }
@@ -47,6 +52,12 @@ async function cambiarClave() {
 
 <template>
   <h1>Mi cuenta y seguridad</h1>
+  <div v-if="auth.usuario?.debe_cambiar_clave" class="alerta aviso">
+    🔑 Su contraseña es <strong>temporal</strong>. Por seguridad debe cambiarla antes de usar el sistema.
+  </div>
+  <div v-if="auth.usuario?.mfa_obligatorio && !auth.usuario?.mfa_activo" class="alerta aviso">
+    📱 Su rol exige el <strong>segundo factor de autenticación (MFA)</strong>. Actívelo para continuar.
+  </div>
   <div v-if="msg" class="alerta ok">{{ msg }}</div>
   <div v-if="error" class="alerta error">{{ error }}</div>
   <div class="rejilla-2">

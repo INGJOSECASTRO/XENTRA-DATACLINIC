@@ -116,3 +116,18 @@ def test_portal_desactivado(client, admin, monkeypatch, jose):
     monkeypatch.setattr(settings, "PORTAL_PACIENTE_ACTIVO", False)
     assert client.post(f"/api/pacientes/{jose['id']}/acceso-portal", headers=admin).status_code == 403
     assert client.get("/api/salud").json()["portal_paciente"] is False
+
+
+def test_carga_masiva_usuarios(client, tmp_path, admin):
+    from app.crear_usuarios import crear_desde_csv
+
+    archivo = tmp_path / "usuarios.csv"
+    archivo.write_text("tipo_documento;numero_documento;nombres;apellidos;email;rol;registro_profesional;especialidad\n"
+                       "CC;555001;Ana;Médica;ana.medica@miips.co;medico;RM-1;Medicina general\n"
+                       "CC;555002;Beto;SinRegistro;beto@miips.co;medico;;\n"
+                       "CC;555003;Caro;Rol;caro@miips.co;superusuario;;\n", encoding="utf-8")
+    creados, errores = crear_desde_csv(archivo)
+    assert [c["email"] for c in creados] == ["ana.medica@miips.co"] and len(errores) == 2
+    clave = creados[0]["clave_temporal"]
+    h = token(client, "ana.medica@miips.co", clave)
+    assert client.get("/api/auth/yo", headers=h).json()["debe_cambiar_clave"] is True

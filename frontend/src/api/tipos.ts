@@ -1,4 +1,5 @@
-export type Rol = 'admin' | 'medico' | 'enfermeria' | 'facturacion' | 'auditor' | 'admisiones' | 'farmacia' | 'laboratorio' | 'paciente'
+export type Rol = 'admin' | 'admin_tecnico' | 'medico' | 'enfermeria' | 'estudiante' | 'facturacion' | 'auditor'
+  | 'auditor_sistemas' | 'admisiones' | 'farmacia' | 'laboratorio' | 'auxiliar_laboratorio' | 'paciente'
 
 export interface Usuario {
   id: string
@@ -12,6 +13,8 @@ export interface Usuario {
   especialidad: string | null
   activo: boolean
   mfa_activo?: boolean
+  mfa_obligatorio?: boolean
+  debe_cambiar_clave?: boolean
   paciente_id?: string | null
 }
 
@@ -105,6 +108,7 @@ export interface Atencion {
   cod_consulta_cups?: string
   valor_servicio?: number
   firmada_en?: string | null
+  supervisor?: Usuario | null
   hash_contenido?: string | null
   bloque_ledger_id?: number | null
   procedimientos?: Procedimiento[]

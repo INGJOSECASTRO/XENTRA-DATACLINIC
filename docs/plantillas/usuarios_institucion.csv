@@ -1,0 +1,15 @@
+tipo_documento;numero_documento;nombres;apellidos;email;rol;registro_profesional;especialidad
+CC;10000001;Nombre;Director Médico;director.medico@miips.co;admin;RM-000001;Dirección médica
+CC;10000002;Nombre;Ingeniero Sistemas;sistemas@miips.co;admin_tecnico;;Ingeniería de sistemas
+CC;10000003;Nombre;Médico General;medico1@miips.co;medico;RM-000003;Medicina general
+CC;10000004;Nombre;Médico Especialista;especialista1@miips.co;medico;RM-000004;Medicina interna
+CC;10000005;Nombre;Enfermera Jefe;enfermera.jefe@miips.co;enfermeria;TP-000005;Enfermería profesional
+CC;10000006;Nombre;Auxiliar Enfermería;aux.enfermeria1@miips.co;enfermeria;CA-000006;Auxiliar de enfermería
+CC;10000007;Nombre;Interno Medicina;interno1@miips.co;estudiante;EST-000007;Internado - Medicina
+CC;10000008;Nombre;Recepción;admisiones1@miips.co;admisiones;;Admisiones
+CC;10000009;Nombre;Facturador;facturacion1@miips.co;facturacion;;Cuentas médicas
+CC;10000010;Nombre;Químico Farmacéutico;farmacia1@miips.co;farmacia;QF-000010;Servicio farmacéutico
+CC;10000011;Nombre;Bacteriólogo;bacteriologo1@miips.co;laboratorio;BAC-000011;Bacteriología
+CC;10000012;Nombre;Auxiliar Laboratorio;aux.laboratorio1@miips.co;auxiliar_laboratorio;;Auxiliar de laboratorio
+CC;10000013;Nombre;Auditor Médico;auditor.medico@miips.co;auditor;RM-000013;Auditoría médica
+CC;10000014;Nombre;Oficial Seguridad;seguridad@miips.co;auditor_sistemas;;Seguridad de la información

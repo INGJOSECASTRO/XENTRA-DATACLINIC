@@ -13,8 +13,8 @@ const sivigila = ref<{ fecha: string; evento: string; cie10: string; documento: 
 
 async function cargar() {
   const params = { desde: desde.value, hasta: hasta.value }
-  if (auth.tiene('admin', 'auditor')) ind.value = (await api.get('/reportes/indicadores', { params })).data
-  sivigila.value = (await api.get('/reportes/sivigila', { params })).data
+  if (auth.tiene('admin', 'auditor', 'auditor_sistemas')) ind.value = (await api.get('/reportes/indicadores', { params })).data
+  if (auth.tiene('admin', 'auditor', 'medico')) sivigila.value = (await api.get('/reportes/sivigila', { params })).data
 }
 const fmt = (v: number | null | undefined, suf = '') => (v === null || v === undefined ? '—' : `${v}${suf}`)
 onMounted(cargar)
@@ -42,7 +42,7 @@ onMounted(cargar)
         <h3 style="margin-top: 1rem">Urgencias por nivel de triage</h3><p>{{ Object.entries(ind.urgencias.por_nivel).map(([k, v]) => `Nivel ${k}: ${v}`).join(' · ') || '—' }}</p></div>
     </div>
   </template>
-  <div class="tarjeta">
+  <div v-if="auth.tiene('admin', 'auditor', 'medico')" class="tarjeta">
     <div class="fila entre">
       <h2>Eventos de notificación obligatoria (SIVIGILA)</h2>
       <button class="btn sec" @click="abrirArchivo('/reportes/sivigila', { desde, hasta, formato: 'csv' }, 'sivigila.csv')">Descargar CSV</button>

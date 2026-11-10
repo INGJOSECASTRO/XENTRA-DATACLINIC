@@ -20,6 +20,10 @@ USUARIOS_DEMO = [
     ("admisiones@xentra.co", "Paula", "Rincón", "admisiones", "1020111222", None, None),
     ("farmacia@xentra.co", "Andrés", "Mora", "farmacia", "1020333444", "QF-1234", "Química farmacéutica"),
     ("laboratorio@xentra.co", "Diana", "Suárez", "laboratorio", "1020555666", "BAC-5678", "Bacteriología"),
+    ("sistemas@xentra.co", "Mateo", "Quintero", "admin_tecnico", "1020777888", None, "Ingeniería de sistemas"),
+    ("seguridad@xentra.co", "Lucía", "Barrera", "auditor_sistemas", "1020999000", None, "Seguridad de la información"),
+    ("residente@xentra.co", "Santiago", "Ortiz", "estudiante", "1031222333", "EST-2026-001", "Internado - Medicina"),
+    ("auxiliar.laboratorio@xentra.co", "Camila", "Rojas", "auxiliar_laboratorio", "1031444555", None, "Auxiliar de laboratorio"),
 ]
 CLAVE_DEMO = "Demo12345*"
 

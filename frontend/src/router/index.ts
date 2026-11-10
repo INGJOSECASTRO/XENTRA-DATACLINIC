@@ -15,22 +15,22 @@ const router = createRouter({
     { path: '/cuenta', component: v('CuentaView') },
     { path: '/pacientes', component: v('PacientesView') },
     { path: '/pacientes/:id', component: v('PacienteDetalleView') },
-    { path: '/pacientes/:id/atencion/:atencionId?', component: v('AtencionFormView'), meta: { roles: CLINICOS } },
+    { path: '/pacientes/:id/atencion/:atencionId?', component: v('AtencionFormView'), meta: { roles: [...CLINICOS, 'estudiante'] } },
     { path: '/atenciones/:id', component: v('AtencionDetalleView') },
     { path: '/agenda', component: v('AgendaView'), meta: { roles: ['admisiones', 'medico', 'enfermeria', 'admin'] } },
     { path: '/urgencias', component: v('UrgenciasView'), meta: { roles: [...CLINICOS, 'admisiones'] } },
-    { path: '/hospitalizacion', component: v('HospitalizacionView'), meta: { roles: [...CLINICOS, 'admisiones', 'auditor'] } },
+    { path: '/hospitalizacion', component: v('HospitalizacionView'), meta: { roles: [...CLINICOS, 'admisiones', 'auditor', 'admin_tecnico'] } },
     { path: '/hospitalizacion/:id', component: v('HospitalizacionDetalleView'), meta: { roles: [...CLINICOS, 'auditor'] } },
-    { path: '/laboratorio', component: v('LaboratorioView'), meta: { roles: ['laboratorio', 'medico', 'enfermeria', 'admin'] } },
+    { path: '/laboratorio', component: v('LaboratorioView'), meta: { roles: ['laboratorio', 'auxiliar_laboratorio', 'medico', 'enfermeria', 'admin'] } },
     { path: '/farmacia', component: v('FarmaciaView'), meta: { roles: ['farmacia', 'admin'] } },
     { path: '/facturacion', component: v('FacturacionView'), meta: { roles: ['facturacion', 'admin', 'auditor'] } },
-    { path: '/reportes', component: v('ReportesView'), meta: { roles: ['admin', 'auditor', 'medico'] } },
-    { path: '/auditoria', component: v('AuditoriaView'), meta: { roles: ['auditor', 'admin'] } },
+    { path: '/reportes', component: v('ReportesView'), meta: { roles: ['admin', 'auditor', 'auditor_sistemas', 'medico'] } },
+    { path: '/auditoria', component: v('AuditoriaView'), meta: { roles: ['auditor', 'auditor_sistemas', 'admin', 'admin_tecnico'] } },
     { path: '/rips', component: v('RipsView'), meta: { roles: ['facturacion', 'admin'] } },
     { path: '/bi', component: v('BIView') },
     { path: '/modulos', component: v('ModulosView') },
     { path: '/soporte', component: v('SoporteView') },
-    { path: '/usuarios', component: v('UsuariosView'), meta: { roles: ['admin'] } },
+    { path: '/usuarios', component: v('UsuariosView'), meta: { roles: ['admin', 'admin_tecnico'] } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })
@@ -39,6 +39,9 @@ router.beforeEach((to) => {
   const auth = useAuth()
   if (to.meta.publica) return
   if (!auth.autenticado) return '/login'
+  // Acción de seguridad pendiente: cambiar la clave temporal o activar el MFA obligatorio del rol
+  const u = auth.usuario
+  if (u && (u.debe_cambiar_clave || (u.mfa_obligatorio && !u.mfa_activo)) && to.path !== '/cuenta') return '/cuenta'
   if (auth.esPaciente && !['/portal', '/cuenta'].includes(to.path)) return '/portal'
   const roles = to.meta.roles as Rol[] | undefined
   if (roles && !auth.tiene(...roles)) return '/'
