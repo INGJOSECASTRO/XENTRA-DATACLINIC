@@ -237,6 +237,16 @@ docker compose exec backend rm /tmp/usuarios.csv /tmp/credenciales.csv
 
 **Desbloquear:** el bloqueo por intentos dura 15 minutos y se libera solo.
 
+**Olvidó la clave (incluso la del administrador) o necesita desbloquear ya:** desde el servidor ejecute
+
+```bash
+docker compose exec backend python -m app.restablecer_clave admin@xentra.co
+```
+
+Muestra una **clave temporal** nueva, quita el bloqueo, reactiva la cuenta y obliga a cambiar la clave al ingresar. Agregue `--quitar-mfa` si además perdió el celular del segundo factor (verifique antes su identidad, protocolo P-02). Queda en el ledger como `CLAVE_RESTABLECIDA_SERVIDOR`.
+
+> El administrador inicial se crea **solo la primera vez** que arranca la base de datos, con la `ADMIN_PASSWORD` que tenía el `.env` en ese momento. Cambiar después esa variable no cambia la clave: use este comando.
+
 ### 6.2 Sedes y camas
 
 - Las sedes se crean por API (`POST /api/sedes`, con el código de habilitación de 12 dígitos) o desde Swagger (`/docs`).
