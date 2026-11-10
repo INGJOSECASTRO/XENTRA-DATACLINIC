@@ -40,6 +40,7 @@ export interface Paciente {
   grupo_sanguineo: string | null
   alergias: string | null
   ocupacion: string | null
+  estado_civil: string | null
   acompanante_nombre: string | null
   acompanante_telefono: string | null
   autoriza_tratamiento_datos: boolean
@@ -147,4 +148,10 @@ export interface ItemCatalogo {
   codigo: string
   descripcion: string
   datos: Record<string, unknown> | null
+}
+
+/** Estado civil (Res. 1995 de 1999). Las claves deben coincidir con EstadoCivil en backend/app/schemas.py */
+export const ESTADOS_CIVILES: Record<string, string> = {
+  soltero: 'Soltero(a)', casado: 'Casado(a)', union_libre: 'Unión libre', separado: 'Separado(a)',
+  divorciado: 'Divorciado(a)', viudo: 'Viudo(a)',
 }

@@ -70,6 +70,10 @@ class UsuarioOut(ORM):
 
 
 # ---------------- Pacientes ----------------
+# Estado civil (Res. 1995 de 1999, datos de identificación del usuario)
+EstadoCivil = Literal["soltero", "casado", "union_libre", "separado", "divorciado", "viudo"]
+
+
 class PacienteBase(BaseModel):
     tipo_documento: TipoDoc
     numero_documento: str = Field(min_length=3, max_length=20, pattern=r"^[A-Za-z0-9]+$")
@@ -91,6 +95,7 @@ class PacienteBase(BaseModel):
     grupo_sanguineo: str | None = None
     alergias: str | None = None
     ocupacion: str | None = None
+    estado_civil: EstadoCivil | None = None
     acompanante_nombre: str | None = None
     acompanante_telefono: str | None = None
     autoriza_tratamiento_datos: bool = False
@@ -118,6 +123,7 @@ class PacienteActualizar(BaseModel):
     grupo_sanguineo: str | None = None
     alergias: str | None = None
     ocupacion: str | None = None
+    estado_civil: EstadoCivil | None = None
     acompanante_nombre: str | None = None
     acompanante_telefono: str | None = None
     autoriza_tratamiento_datos: bool | None = None

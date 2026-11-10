@@ -117,6 +117,8 @@ class Paciente(Base):
     grupo_sanguineo: Mapped[str | None] = mapped_column(String(3))
     alergias: Mapped[str | None] = mapped_column(Text)
     ocupacion: Mapped[str | None] = mapped_column(String(100))
+    # Res. 1995 de 1999: el estado civil hace parte de los datos de identificación del usuario
+    estado_civil: Mapped[str | None] = mapped_column(String(15))
     acompanante_nombre: Mapped[str | None] = mapped_column(String(120))
     acompanante_telefono: Mapped[str | None] = mapped_column(String(20))
     # Ley 1581 de 2012: autorización expresa para tratar datos sensibles

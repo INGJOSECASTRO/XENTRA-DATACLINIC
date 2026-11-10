@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, mensajeError } from '../api/cliente'
+import { ESTADOS_CIVILES } from '../api/tipos'
 import type { Paciente } from '../api/tipos'
 import { useAuth } from '../stores/auth'
 
@@ -16,7 +17,7 @@ const vacio = () => ({
   tipo_documento: 'CC', numero_documento: '', primer_nombre: '', segundo_nombre: '', primer_apellido: '',
   segundo_apellido: '', fecha_nacimiento: '', sexo: 'M', telefono: '', email: '', direccion: '',
   cod_municipio_residencia: '11001', zona_territorial: '02', tipo_usuario: '01', cod_eapb: '',
-  grupo_sanguineo: '', alergias: '', acompanante_nombre: '', acompanante_telefono: '',
+  grupo_sanguineo: '', alergias: '', ocupacion: '', estado_civil: '', acompanante_nombre: '', acompanante_telefono: '',
   autoriza_tratamiento_datos: false,
 })
 const form = reactive(vacio())
@@ -84,6 +85,13 @@ onMounted(buscar)
       <label>Código EPS / EAPB <input v-model="form.cod_eapb" /></label>
       <label>Grupo sanguíneo <input v-model="form.grupo_sanguineo" placeholder="O+" maxlength="3" /></label>
       <label>Alergias <input v-model="form.alergias" placeholder="Ninguna conocida" /></label>
+      <label>Estado civil
+        <select v-model="form.estado_civil">
+          <option value="">— Sin dato —</option>
+          <option v-for="(texto, valor) in ESTADOS_CIVILES" :key="valor" :value="valor">{{ texto }}</option>
+        </select>
+      </label>
+      <label>Ocupación <input v-model="form.ocupacion" /></label>
       <label>Acompañante / responsable <input v-model="form.acompanante_nombre" /></label>
       <label>Teléfono acompañante <input v-model="form.acompanante_telefono" /></label>
     </div>

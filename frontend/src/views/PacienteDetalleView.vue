@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { abrirArchivo, api, fechaHora, mensajeError } from '../api/cliente'
+import { ESTADOS_CIVILES } from '../api/tipos'
 import type { Atencion, Paciente } from '../api/tipos'
 import FirmaCanvas from '../components/FirmaCanvas.vue'
 import { useAuth } from '../stores/auth'
@@ -105,6 +106,8 @@ onMounted(async () => {
         <div><div class="suave">Municipio</div>{{ p.cod_municipio_residencia }} ({{ p.zona_territorial === '01' ? 'rural' : 'urbana' }})</div>
         <div><div class="suave">EPS / régimen</div>{{ p.cod_eapb || '—' }} / {{ p.tipo_usuario }}</div>
         <div><div class="suave">Grupo sanguíneo</div>{{ p.grupo_sanguineo || '—' }}</div>
+        <div><div class="suave">Estado civil</div>{{ ESTADOS_CIVILES[p.estado_civil || ''] || '—' }}</div>
+        <div><div class="suave">Ocupación</div>{{ p.ocupacion || '—' }}</div>
         <div><div class="suave">Acompañante</div>{{ p.acompanante_nombre || '—' }} {{ p.acompanante_telefono || '' }}</div>
       </div>
     </div>
