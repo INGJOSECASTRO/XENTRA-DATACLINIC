@@ -137,6 +137,8 @@ Aplique con `docker compose up -d`. `URL_PUBLICA` es la dirección que se imprim
 
 ## Nivel 2. Acceso remoto privado con Tailscale (sin publicar en internet)
 
+> **Alternativa 100 % código abierto y recomendada para la HCE:** VPN WireGuard propia, ya configurada en `docker-compose.vpn.yml`. Guía: `docs/13-hce-privada-vpn.md`.
+
 Tailscale crea una **red privada cifrada** entre los equipos autorizados. El sistema **no queda expuesto** en internet: solo los equipos que usted agregue pueden verlo. Es la opción más segura para que médicos o directivos entren desde casa.
 
 1. Cree una cuenta en `tailscale.com` (con el correo institucional).

@@ -1,0 +1,77 @@
+# HCE PRIVADA: acceso a XENTRA solo por VPN WireGuard (100 % código abierto, $0).
+# La historia clínica NO queda publicada en internet: solo entran los equipos a los que usted
+# les entregue un perfil de VPN (código QR). El tráfico va cifrado de punta a punta.
+#
+# Requisitos: IP pública en su conexión (sin CG-NAT) y el puerto UDP 51820 reenviado en el router.
+# Guía paso a paso: docs/13-hce-privada-vpn.md
+#
+#   docker compose -f docker-compose.yml -f docker-compose.vpn.yml up -d --build
+#   (con DuckDNS para IP dinámica:  ... --profile duckdns up -d --build)
+#
+# Una vez conectados a la VPN, los usuarios abren:  http://172.30.77.10
+services:
+  vpn:
+    image: ghcr.io/wg-easy/wg-easy:14
+    restart: unless-stopped
+    environment:
+      # Dirección pública con la que los equipos encuentran su servidor (IP pública o suips.duckdns.org)
+      WG_HOST: ${VPN_HOST:?Falta VPN_HOST en .env (su IP pública o dominio DuckDNS)}
+      # Clave del panel de administración (hash bcrypt; ver la guía para generarlo)
+      PASSWORD_HASH: ${VPN_PANEL_HASH:?Falta VPN_PANEL_HASH en .env}
+      WG_PORT: "51820"
+      WG_DEFAULT_ADDRESS: 10.77.0.x
+      # Túnel dividido: por la VPN SOLO viaja el tráfico hacia XENTRA; el resto de internet del
+      # usuario sale normal. Mínimo privilegio: la VPN no da acceso a ningún otro equipo de su red.
+      WG_ALLOWED_IPS: 172.30.77.10/32
+      WG_PERSISTENT_KEEPALIVE: "25"
+      UI_TRAFFIC_STATS: "true"
+    volumes:
+      - datos_vpn:/etc/wireguard
+    ports:
+      - "51820:51820/udp"           # el único puerto que se abre en el router
+      - "127.0.0.1:51821:51821/tcp" # panel de administración: SOLO desde el propio servidor
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.src_valid_mark=1
+    networks:
+      default:
+        ipv4_address: 172.30.77.2
+
+  # Opcional: mantiene actualizado su dominio gratuito de DuckDNS si la IP pública cambia.
+  duckdns:
+    image: lscr.io/linuxserver/duckdns:latest
+    profiles: ["duckdns"]
+    restart: unless-stopped
+    environment:
+      SUBDOMAINS: ${DUCKDNS_SUBDOMINIO:-}
+      TOKEN: ${DUCKDNS_TOKEN:-}
+      TZ: America/Bogota
+
+  # XENTRA con dirección fija dentro de la red de Docker: es la que se alcanza por la VPN.
+  frontend:
+    networks:
+      default:
+        ipv4_address: 172.30.77.10
+    # El 8080 queda abierto en la red local de la sede como contingencia.
+    # Para que SOLO se entre por VPN, cambie la línea siguiente por:  ports: !reset []
+    ports:
+      - "8080:80"
+
+  backend:
+    ports: !reset []          # la API solo se alcanza a través del frontend
+    environment:
+      AUTO_CREAR_TABLAS: "false"
+      CARGAR_DATOS_DEMO: "false"
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.77.0/24
+          ip_range: 172.30.77.128/25   # los demás contenedores toman IP desde .128: no chocan con .2 ni .10
+
+volumes:
+  datos_vpn:

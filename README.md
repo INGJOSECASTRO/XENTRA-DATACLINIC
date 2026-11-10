@@ -100,6 +100,7 @@ Usuarios de demostración (solo con `CARGAR_DATOS_DEMO=true`), todos con la clav
 | 10 | [Análisis del mercado colombiano](docs/10-analisis-mercado.md) | Deficiencias documentadas del sector, con fuentes, y cómo las resuelve XENTRA |
 | 11 | [Plan de continuidad del negocio](docs/11-plan-continuidad.md) | RPO/RTO, escenarios (caída, ransomware), restauración, soporte |
 | 12 | [Despliegue en su propio equipo como servidor](docs/12-despliegue-servidor-propio.md) | Red local, acceso remoto privado (Tailscale) e internet con dominio y HTTPS (Cloudflare Tunnel) |
+| 13 | [HCE privada por VPN (WireGuard)](docs/13-hce-privada-vpn.md) | Acceso solo con perfil de VPN, sin publicar la historia clínica en internet; 100 % código abierto |
 
 ## Estructura del proyecto
 

@@ -79,7 +79,7 @@ Resultado esperado: `db` healthy, `migrate` **Exited (0)**, `backend` running (h
 
 ### 3.1.1 Su propio equipo Windows como servidor
 
-Para usar el mismo computador con Docker Desktop como servidor (red local, acceso remoto privado con Tailscale o internet con dominio y HTTPS mediante Cloudflare Tunnel, sin abrir puertos), siga la guía `docs/12-despliegue-servidor-propio.md` y el archivo `docker-compose.tunel.yml`.
+Para usar el mismo computador con Docker Desktop como servidor (HCE privada por VPN WireGuard: `docs/13-hce-privada-vpn.md` y `docker-compose.vpn.yml`; red local, acceso remoto privado con Tailscale o internet con dominio y HTTPS mediante Cloudflare Tunnel, sin abrir puertos), siga la guía `docs/12-despliegue-servidor-propio.md` y el archivo `docker-compose.tunel.yml`.
 
 ### 3.2 Producción con HTTPS
 
