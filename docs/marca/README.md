@@ -23,6 +23,8 @@
 | `xentra-simbolo.svg` | Solo el símbolo: avatar, sellos, marcas de agua |
 | `favicon.svg` | Versión simplificada para tamaños de 16 a 64 px (pestaña del navegador, ícono de app) |
 
+En `png/` están las mismas versiones en PNG de alta resolución con fondo transparente, para Word, PowerPoint y redes sociales.
+
 Los textos están convertidos en trazos: se ven igual en cualquier computador, sin instalar fuentes.
 
 ## Colores
