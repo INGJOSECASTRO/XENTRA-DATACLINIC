@@ -131,6 +131,9 @@ Genere valores aleatorios con: `python -c "import secrets; print(secrets.token_u
 | `MAX_INTENTOS_LOGIN` | 5 | Intentos fallidos antes del bloqueo |
 | `MINUTOS_BLOQUEO` | 15 | Duración del bloqueo |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | admin@xentra.co | Administrador inicial; se crea solo en el primer arranque |
+| `PORTAL_PACIENTE_ACTIVO` | false | `false`: los pacientes no ingresan a la plataforma (se oculta el botón y se rechaza cualquier cuenta de paciente) |
+| `CAMBIO_CLAVE_PRIMER_INGRESO` | true | Obliga a cambiar la clave temporal antes de usar el sistema |
+| `MFA_OBLIGATORIO_ROLES` | (vacío) | Roles que deben activar el MFA para trabajar. Producción: `admin,admin_tecnico,auditor,auditor_sistemas,medico,facturacion` |
 
 ### 4.3 Datos de la institución
 
@@ -197,21 +200,36 @@ Genere valores aleatorios con: `python -c "import secrets; print(secrets.token_u
 
 ### 6.1 Usuarios y roles
 
-Menú **Usuarios** (solo admin).
+Menú **Usuarios** (roles `admin` y `admin_tecnico`). Los procedimientos completos de alta, cambio, baja y revisión están en los **Protocolos de seguridad** (`04-PROTOCOLOS-SEGURIDAD.md`, P-01 y P-02), que incluyen la matriz completa de permisos.
 
-| Rol | Puede |
-|---|---|
-| `admin` | Todo, incluida la configuración |
-| `medico` | Historia clínica, firma, órdenes, hospitalización, urgencias, agenda propia, BI clínico |
-| `enfermeria` | Triage, notas de enfermería, kárdex, balance, signos, toma de muestras, módulos asignados |
-| `admisiones` | Pacientes, agenda, recordatorios, acceso al portal, PQRS |
-| `facturacion` | Facturas, RIPS, pre-auditoría, BI financiero |
-| `farmacia` | Inventario, entradas, dispensación |
-| `laboratorio` | Resultados y validación |
-| `auditor` | Lectura de HC, ledger, indicadores, BI, RDA, estado del sistema |
-| `paciente` | Solo su portal (lo crea admisiones) |
+| Rol | Puede | ¿Ve HC? |
+|---|---|---|
+| `admin` | Todo, incluida la configuración. Único que crea otros `admin`. Máximo 2 | Sí |
+| `admin_tecnico` | Usuarios (menos `admin`), sedes, camas, módulos, avisos, tickets, ledger, estado del sistema | **No** (en camas solo ve "Ocupada") |
+| `medico` | Historia clínica, firma, órdenes, hospitalización, urgencias, agenda, refrendo de estudiantes, BI clínico | Sí |
+| `enfermeria` | Triage, notas, kárdex, balance, signos, toma de muestras, módulos asignados | Sí |
+| `estudiante` | Registra atenciones en **borrador**; no firma. El médico las refrenda | Sí |
+| `admisiones` | Pacientes, agenda, recordatorios, PQRS | No |
+| `facturacion` | Facturas, RIPS, pre-auditoría, BI financiero | No |
+| `farmacia` | Inventario, entradas, dispensación | No |
+| `laboratorio` | Toma, resultados y **validación** | No |
+| `auxiliar_laboratorio` | Toma de muestras y digitación de resultados; **no valida** | No |
+| `auditor` | Lectura de HC, ledger, indicadores, BI, RDA, estado del sistema | Sí (lectura) |
+| `auditor_sistemas` | Ledger, accesos, RDA, estado del sistema, indicadores de gerencia | **No** |
+| `paciente` | Deshabilitado mientras `PORTAL_PACIENTE_ACTIVO=false` | — |
 
-**Crear un usuario:** documento, nombres, correo, contraseña (mínimo 10 caracteres, con mayúsculas, minúsculas y números), rol y registro profesional (obligatorio para médicos).
+**Crear un usuario:** rol (debajo aparece qué hace y si ve historias), documento, nombres, correo, registro profesional (obligatorio para `medico`, `enfermeria`, `laboratorio`, `farmacia` y `auditor`) y clave temporal (botón **Generar**). La clave se muestra una sola vez: entréguela en persona. En el primer ingreso el sistema obliga a cambiarla. Las columnas **MFA** ("Pendiente (obligatorio)") y **Clave** ("Temporal" o "Propia") muestran quién no ha cumplido.
+
+**Carga masiva:** para crear a todo el personal de una vez, use la plantilla `docs/plantillas/usuarios_institucion.csv` y el comando:
+
+```bash
+docker compose cp usuarios.csv backend:/tmp/usuarios.csv
+docker compose exec backend python -m app.crear_usuarios /tmp/usuarios.csv --salida /tmp/credenciales.csv
+docker compose cp backend:/tmp/credenciales.csv ./credenciales.csv
+docker compose exec backend rm /tmp/usuarios.csv /tmp/credenciales.csv
+```
+
+`credenciales.csv` trae una clave temporal distinta para cada persona: entréguelas en sobre cerrado y borre el archivo (detalle en el protocolo, sección 16).
 
 **Desactivar** (no borrar) a quien deja la institución: botón **Desactivar**. Su historial queda intacto.
 
@@ -325,7 +343,9 @@ Argon2id, MFA, bloqueo por intentos, cierre por inactividad, roles en cada endpo
 
 ### 9.2 Lo que debe hacer el administrador
 
-- [ ] Exigir MFA a administradores, médicos y facturación.
+- [ ] Aplicar los **Protocolos de seguridad** (`04-PROTOCOLOS-SEGURIDAD.md`) y su lista de verificación.
+- [ ] Exigir MFA con `MFA_OBLIGATORIO_ROLES=admin,admin_tecnico,auditor,auditor_sistemas,medico,facturacion`.
+- [ ] Desactivar la cuenta inicial `admin@xentra.co` una vez creadas las cuentas personales, y apagar los usuarios demo (`CARGAR_DATOS_DEMO=false`).
 - [ ] Revisar cada semana *Seguridad blockchain → Verificar cadena completa*.
 - [ ] Revisar en el ledger los `LOGIN_FALLIDO` y `MFA_FALLIDO` repetidos.
 - [ ] Mantener el servidor actualizado (`apt update && apt upgrade`) y Docker al día.

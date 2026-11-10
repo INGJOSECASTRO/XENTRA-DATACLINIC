@@ -27,7 +27,7 @@
 11. [Laboratorio clínico e imágenes](#11-laboratorio-clínico-e-imágenes)
 12. [Auditor(a)](#12-auditora)
 13. [Administrador(a) funcional](#13-administradora-funcional)
-14. [Paciente (portal)](#14-paciente-portal)
+14. [Estudiantes, auxiliar de laboratorio y roles técnicos](#14-estudiantes-auxiliar-de-laboratorio-y-roles-técnicos)
 
 **Parte C – Referencia**
 15. [Inteligencia de negocio (todos los roles)](#15-inteligencia-de-negocio-todos-los-roles)
@@ -44,6 +44,8 @@
 2. Escriba su **correo** y su **contraseña** y pulse **Ingresar**.
 3. Si tiene activado el **segundo factor (MFA)**, abra en el celular la app autenticadora y escriba el código de 6 dígitos.
 4. Verá la pantalla de **Inicio** con su nombre.
+
+> **Primer ingreso.** La institución le entrega una **clave temporal**. El sistema lo lleva a **Mi cuenta y seguridad** y no le deja usar ninguna otra pantalla hasta que la cambie. Si su rol exige segundo factor (médicos, auditores, facturación y administradores), también debe activar el MFA allí mismo (sección 3.1).
 
 | Mensaje | Qué significa | Qué hacer |
 |---|---|---|
@@ -251,7 +253,7 @@ Igual que el médico (secciones 6.3 y 6.9), si su institución lo autoriza.
 
 ### 8.1 Registrar pacientes
 
-Igual que la sección 6.1. Verifique el documento antes de crear, para no duplicar. Registre el **correo** si el paciente quiere usar el portal.
+Igual que la sección 6.1. Verifique el documento antes de crear, para no duplicar. Registre el **correo** y el teléfono para recordatorios de citas.
 
 ### 8.2 Asignar una cita
 
@@ -272,9 +274,9 @@ Igual que la sección 6.1. Verifique el documento antes de crear, para no duplic
 - **Reprogramar:** con la API o cancelando y asignando de nuevo.
 - **Enviar recordatorios:** cada tarde envía los recordatorios de las citas del día siguiente.
 
-### 8.4 Crear el acceso al portal del paciente
+### 8.4 Solicitudes de copia de la historia clínica
 
-Ficha del paciente → **Crear acceso al portal**. El paciente debe tener correo y autorización de datos. Aparece una **clave temporal**: entréguela de forma segura y pídale que la cambie en su primer ingreso.
+En esta institución **los pacientes no ingresan a la plataforma** (el portal está deshabilitado y no aparece el botón "Crear acceso al portal"). Si un paciente pide copia de su historia o saber quién la consultó, reciba la solicitud por escrito y remítala según los Protocolos de seguridad (sección 2): el médico o el archivo entrega el PDF firmado y el auditor genera el reporte de accesos.
 
 ### 8.5 PQRS
 
@@ -352,7 +354,9 @@ Servicios pendientes → Armar factura → Pre-auditoría → Emitir DIAN (CUFE)
 1. Elija el filtro: **Pendientes de toma**, **Pendientes de resultado**, **Pendientes de validar** o **Validados**. Las órdenes **URGENTES** aparecen primero.
 2. **Toma realizada** cuando se tome la muestra.
 3. **Resultado:** filas de analito, valor, unidad y referencia (escriba el rango así: `70 - 100`). Los valores fuera de rango se marcan en rojo automáticamente. Agregue el informe o la lectura (imágenes).
-4. **Validar:** el profesional responsable sella el resultado. Ya no se puede modificar. Aparece en la historia del paciente y en su portal.
+4. **Validar:** el bacteriólogo (rol `laboratorio`) sella el resultado. Ya no se puede modificar y aparece en la historia del paciente.
+
+> **Auxiliar de laboratorio:** puede hacer los pasos 1 a 3 (toma y digitación), pero **no** valida (Ley 841 de 2003). Sus resultados quedan en "Pendientes de validar" hasta que el bacteriólogo los revise.
 
 ---
 
@@ -406,22 +410,43 @@ El detalle técnico está en el **Manual del administrador técnico** (`02-MANUA
 
 ---
 
-## 14. Paciente (portal)
+## 14. Estudiantes, auxiliar de laboratorio y roles técnicos
 
-1. La IPS le entrega su **usuario (correo) y una clave temporal**.
-2. Ingrese en la misma dirección del sistema y **cambie su clave** en **Mi cuenta y seguridad**. Puede activar el segundo factor.
-3. En **Mi salud** encontrará:
+### 14.1 Estudiante, interno o residente
 
-| Pestaña | Contenido |
-|---|---|
-| Mi resumen | Alergias, diagnósticos del último año, medicamentos y próximas citas |
-| Mis consultas | Cada atención con diagnósticos y plan; **Historia PDF** y **Fórmula** |
-| Mis citas | Estado y botón **Entrar a la teleconsulta** |
-| Mis resultados | Exámenes validados; los valores fuera de rango aparecen en rojo |
-| ¿Quién vio mi historia? | Fecha, persona y rol de quienes consultaron su historia clínica |
+**Menús:** Inicio, Pacientes, Módulos adicionales, Soporte y continuidad, Mi cuenta.
 
-4. **Descargar toda mi historia (FHIR):** copia completa en formato estándar, útil para llevar a otra institución.
-5. Si ve un acceso que no reconoce, comuníquese con la IPS (derecho de Habeas Data, Ley 1581 de 2012).
+1. Busque al paciente y pulse **+ Nueva atención**.
+2. Diligencie la historia como en la sección 6.3 (puede usar plantillas, dictado y el asistente IA CIE-10).
+3. Pulse **Guardar borrador**. **No existe el botón Firmar** para usted: el registro queda **pendiente de refrendo** de su docente (Decreto 2376 de 2010).
+4. Puede volver a abrir y corregir su borrador mientras el docente no lo haya refrendado.
+
+### 14.2 Médico docente: refrendar
+
+1. En **Inicio** aparece la tarjeta **Registros de estudiantes pendientes de su refrendo**.
+2. Pulse **Revisar y refrendar**. Se abre el registro con el aviso "Registro elaborado por el estudiante…".
+3. Revíselo, corríjalo si es necesario y pulse **Refrendar y firmar**. Al hacerlo, usted asume la responsabilidad del registro.
+4. El folio queda sellado. El PDF muestra el estudiante que lo elaboró y a usted como docente que lo refrendó.
+
+### 14.3 Auxiliar de laboratorio
+
+**Menús:** Inicio, Laboratorio e imágenes, Módulos adicionales, Soporte y continuidad, Mi cuenta. Toma muestras y digita resultados (sección 11, pasos 1 a 3). No valida.
+
+### 14.4 Administrador técnico (sistemas)
+
+**Menús:** Inicio, Hospitalización (solo camas), Seguridad blockchain, Usuarios, Módulos adicionales, Soporte y continuidad, Mi cuenta.
+
+- Crea y desactiva usuarios (excepto administradores), repone el MFA según el protocolo P-02, administra sedes, camas y módulos, publica avisos y atiende tickets.
+- **No** ve historias clínicas ni nombres de pacientes: en hospitalización solo ve si cada cama está libre, ocupada o en mantenimiento.
+
+### 14.5 Auditor de sistemas (seguridad de la información)
+
+**Menús:** Inicio, Indicadores (gerencia), Seguridad blockchain, Módulos adicionales, Soporte y continuidad, Mi cuenta.
+
+- Verifica la cadena, revisa accesos e intentos fallidos y vigila las acciones de los administradores (protocolo P-07).
+- Consulta el estado del sistema y la cola RDA. No ve historias clínicas.
+
+> **Pacientes:** en esta institución los pacientes no tienen acceso a la plataforma. Sus solicitudes se atienden según la sección 8.4.
 
 ---
 
