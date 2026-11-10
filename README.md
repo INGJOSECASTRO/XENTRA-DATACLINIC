@@ -99,6 +99,7 @@ Usuarios de demostración (solo con `CARGAR_DATOS_DEMO=true`), todos con la clav
 | 9 | [Manual de uso por módulo](docs/09-manual-modulos.md) | Cómo se usa cada pantalla, por rol |
 | 10 | [Análisis del mercado colombiano](docs/10-analisis-mercado.md) | Deficiencias documentadas del sector, con fuentes, y cómo las resuelve XENTRA |
 | 11 | [Plan de continuidad del negocio](docs/11-plan-continuidad.md) | RPO/RTO, escenarios (caída, ransomware), restauración, soporte |
+| 12 | [Despliegue en su propio equipo como servidor](docs/12-despliegue-servidor-propio.md) | Red local, acceso remoto privado (Tailscale) e internet con dominio y HTTPS (Cloudflare Tunnel) |
 
 ## Estructura del proyecto
 

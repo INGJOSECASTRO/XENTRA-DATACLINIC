@@ -1,0 +1,29 @@
+# Publicar XENTRA en internet DESDE SU PROPIO EQUIPO con HTTPS, sin abrir puertos del router
+# (Cloudflare Tunnel: el equipo sale hacia Cloudflare; nadie entra directamente a su red).
+#
+# Requisitos: dominio administrado en Cloudflare y el token del túnel en .env (CLOUDFLARE_TUNNEL_TOKEN).
+# Guía paso a paso: docs/12-despliegue-servidor-propio.md
+#
+#   docker compose -f docker-compose.yml -f docker-compose.tunel.yml up -d --build
+services:
+  tunel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?Falta CLOUDFLARE_TUNNEL_TOKEN en .env}
+    depends_on:
+      - frontend
+
+  backend:
+    ports: !reset []          # la API solo se alcanza a través del frontend
+    environment:
+      AUTO_CREAR_TABLAS: "false"
+      CARGAR_DATOS_DEMO: "false"
+
+  # El puerto 8080 queda abierto en la red local como CONTINGENCIA: si se cae internet,
+  # los equipos de la misma sede siguen trabajando por http://IP-DEL-SERVIDOR:8080.
+  # Si no lo quiere, cambie la línea por:  ports: !reset []
+  frontend:
+    ports:
+      - "8080:80"

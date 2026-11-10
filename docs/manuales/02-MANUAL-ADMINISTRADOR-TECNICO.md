@@ -77,6 +77,10 @@ docker compose ps
 
 Resultado esperado: `db` healthy, `migrate` **Exited (0)**, `backend` running (healthy), `frontend` running, `respaldo` running. Abra `http://localhost:8080`.
 
+### 3.1.1 Su propio equipo Windows como servidor
+
+Para usar el mismo computador con Docker Desktop como servidor (red local, acceso remoto privado con Tailscale o internet con dominio y HTTPS mediante Cloudflare Tunnel, sin abrir puertos), siga la guía `docs/12-despliegue-servidor-propio.md` y el archivo `docker-compose.tunel.yml`.
+
 ### 3.2 Producción con HTTPS
 
 1. Cree un registro DNS tipo **A** de su dominio (ej. `hce.miips.com`) apuntando a la IP del servidor.
