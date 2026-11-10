@@ -44,7 +44,8 @@ class UsuarioCrear(BaseModel):
     apellidos: str = Field(min_length=2, max_length=100)
     email: EmailStr
     password: str
-    rol: Literal["admin", "medico", "enfermeria", "facturacion", "auditor", "admisiones", "farmacia", "laboratorio"]
+    rol: Literal["admin", "admin_tecnico", "medico", "enfermeria", "estudiante", "facturacion", "auditor",
+                 "auditor_sistemas", "admisiones", "farmacia", "laboratorio", "auxiliar_laboratorio"]
     registro_profesional: str | None = None
     especialidad: str | None = None
     sede_id: uuid.UUID | None = None
@@ -62,6 +63,8 @@ class UsuarioOut(ORM):
     especialidad: str | None
     activo: bool
     mfa_activo: bool = False
+    mfa_obligatorio: bool = False
+    debe_cambiar_clave: bool = False
     sede_id: uuid.UUID | None = None
     paciente_id: uuid.UUID | None = None
 
@@ -270,6 +273,7 @@ class AtencionOut(AtencionResumen):
     condicion_egreso: str | None
     dx_causa_muerte: str | None
     firmada_en: datetime | None
+    supervisor: UsuarioOut | None = None
     hash_contenido: str | None
     bloque_ledger_id: int | None
     procedimientos: list[ProcedimientoOut]

@@ -7,14 +7,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import PERSONAL, ip_cliente, requiere_rol
+from app.core.deps import ADMIN_GESTION, PERSONAL, es_admin, ip_cliente, requiere_rol
 from app.models import Paciente, Usuario
 from app.models_ext import ModuloDinamico, RegistroModulo
 from app.services import modulos as srv
 from app.services.ledger import json_canonico, registrar_evento, sha256
 
 router = APIRouter(prefix="/api/modulos", tags=["Módulos dinámicos"])
-ROLES_VALIDOS = {"admin", "medico", "enfermeria", "facturacion", "auditor", "admisiones", "farmacia", "laboratorio"}
+from app.core.deps import PERSONAL as _P
+ROLES_VALIDOS = set(_P)
 
 
 class ModuloIn(BaseModel):
@@ -63,7 +64,7 @@ def tipos(_: Usuario = Depends(requiere_rol(*PERSONAL))):
 
 
 @router.get("/plantillas")
-def plantillas(_: Usuario = Depends(requiere_rol("admin"))):
+def plantillas(_: Usuario = Depends(requiere_rol(*ADMIN_GESTION))):
     return srv.PLANTILLAS
 
 
@@ -71,7 +72,7 @@ def plantillas(_: Usuario = Depends(requiere_rol("admin"))):
 def listar(db: Session = Depends(get_db), usuario: Usuario = Depends(requiere_rol(*PERSONAL))):
     todos = db.scalars(select(ModuloDinamico).order_by(ModuloDinamico.categoria, ModuloDinamico.nombre)).all()
     return [{**_salida(m), "puede_escribir": _puede(usuario, m.roles_escritura)} for m in todos
-            if usuario.rol == "admin" or (m.activo and (_puede(usuario, m.roles_lectura) or _puede(usuario, m.roles_escritura)))]
+            if es_admin(usuario) or (m.activo and (_puede(usuario, m.roles_lectura) or _puede(usuario, m.roles_escritura)))]
 
 
 def _crear(db: Session, datos: dict, admin: Usuario, ip) -> ModuloDinamico:
@@ -91,12 +92,12 @@ def _crear(db: Session, datos: dict, admin: Usuario, ip) -> ModuloDinamico:
 
 
 @router.post("", status_code=201)
-def crear(datos: ModuloIn, request: Request, db: Session = Depends(get_db), admin: Usuario = Depends(requiere_rol("admin"))):
+def crear(datos: ModuloIn, request: Request, db: Session = Depends(get_db), admin: Usuario = Depends(requiere_rol(*ADMIN_GESTION))):
     return _salida(_crear(db, datos.model_dump(), admin, ip_cliente(request)))
 
 
 @router.post("/plantillas/{plantilla}/instalar", status_code=201)
-def instalar(plantilla: str, request: Request, db: Session = Depends(get_db), admin: Usuario = Depends(requiere_rol("admin"))):
+def instalar(plantilla: str, request: Request, db: Session = Depends(get_db), admin: Usuario = Depends(requiere_rol(*ADMIN_GESTION))):
     if plantilla not in srv.PLANTILLAS:
         raise HTTPException(404, "Plantilla no encontrada")
     return _salida(_crear(db, {"clave": plantilla, **srv.PLANTILLAS[plantilla]}, admin, ip_cliente(request)))
@@ -104,7 +105,7 @@ def instalar(plantilla: str, request: Request, db: Session = Depends(get_db), ad
 
 @router.put("/{clave}")
 def editar(clave: str, datos: ModuloIn, request: Request, db: Session = Depends(get_db),
-           admin: Usuario = Depends(requiere_rol("admin"))):
+           admin: Usuario = Depends(requiere_rol(*ADMIN_GESTION))):
     """Cada cambio crea una nueva versión; los registros anteriores conservan la versión con la que se hicieron."""
     m = db.scalars(select(ModuloDinamico).where(ModuloDinamico.clave == clave)).first()
     if not m:

@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import CLINICOS, LABORATORIO, LECTURA_HC, MEDICOS, ip_cliente, requiere_rol
+from app.core.deps import CLINICOS, LABORATORIO, LABORATORIO_OPERATIVO, LECTURA_HC, MEDICOS, ip_cliente, requiere_rol
 from app.models import Paciente, Usuario
 from app.models_ext import Consentimiento, OrdenServicio
 from app.schemas_ext import ConsentimientoIn, ConsentimientoOut, OrdenServicioIn, OrdenServicioOut, ResultadoIn
@@ -43,7 +43,7 @@ def ordenar(datos: OrdenServicioIn, request: Request, db: Session = Depends(get_
 
 @router.get("/ordenes-servicio", response_model=list[OrdenServicioOut])
 def listar(estado: str | None = None, tipo: str | None = None, paciente_id: uuid.UUID | None = None,
-           db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*LECTURA_HC, *LABORATORIO))):
+           db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*LECTURA_HC, *LABORATORIO_OPERATIVO))):
     q = select(OrdenServicio).order_by(OrdenServicio.prioridad.desc(), OrdenServicio.fecha.desc()).limit(300)
     if estado:
         q = q.where(OrdenServicio.estado == estado)
@@ -55,7 +55,7 @@ def listar(estado: str | None = None, tipo: str | None = None, paciente_id: uuid
 
 
 @router.post("/ordenes-servicio/{orden_id}/toma", response_model=OrdenServicioOut)
-def toma(orden_id: uuid.UUID, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*LABORATORIO, "enfermeria"))):
+def toma(orden_id: uuid.UUID, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*LABORATORIO_OPERATIVO, "enfermeria"))):
     o = _orden(db, orden_id)
     if o.estado != "ordenada":
         raise HTTPException(409, "La muestra ya fue tomada")
@@ -66,7 +66,7 @@ def toma(orden_id: uuid.UUID, db: Session = Depends(get_db), _: Usuario = Depend
 
 @router.post("/ordenes-servicio/{orden_id}/resultado", response_model=OrdenServicioOut)
 def resultado(orden_id: uuid.UUID, datos: ResultadoIn, db: Session = Depends(get_db),
-              _: Usuario = Depends(requiere_rol(*LABORATORIO, "medico"))):
+              _: Usuario = Depends(requiere_rol(*LABORATORIO_OPERATIVO, "medico"))):
     o = _orden(db, orden_id)
     if o.estado == "validada":
         raise HTTPException(409, "El resultado ya fue validado y es inalterable")

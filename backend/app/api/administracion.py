@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import CLINICOS, PERSONAL, ip_cliente, requiere_rol
+from app.core.deps import ADMIN_GESTION, CLINICOS_FORMACION, PERSONAL, ip_cliente, requiere_rol
 from app.models import Paciente, Usuario
 from app.models_ext import Sede
 from app.services import catalogos, seguridad_clinica
@@ -48,7 +48,7 @@ def sedes(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*PERS
 
 
 @router.post("/sedes", response_model=SedeOut, status_code=201)
-def crear_sede(datos: SedeIn, request: Request, db: Session = Depends(get_db), admin: Usuario = Depends(requiere_rol("admin"))):
+def crear_sede(datos: SedeIn, request: Request, db: Session = Depends(get_db), admin: Usuario = Depends(requiere_rol(*ADMIN_GESTION))):
     sede = Sede(**datos.model_dump())
     db.add(sede)
     db.flush()
@@ -59,7 +59,7 @@ def crear_sede(datos: SedeIn, request: Request, db: Session = Depends(get_db), a
 
 
 @router.put("/sedes/{sede_id}", response_model=SedeOut)
-def editar_sede(sede_id: uuid.UUID, datos: SedeIn, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("admin"))):
+def editar_sede(sede_id: uuid.UUID, datos: SedeIn, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*ADMIN_GESTION))):
     sede = db.get(Sede, sede_id)
     if not sede:
         raise HTTPException(404, "Sede no encontrada")
@@ -83,12 +83,12 @@ def catalogo(tipo: str, q: str | None = None, limite: int = Query(100, le=500), 
 
 
 @router.get("/clinica/plantillas")
-def plantillas(_: Usuario = Depends(requiere_rol(*CLINICOS))):
+def plantillas(_: Usuario = Depends(requiere_rol(*CLINICOS_FORMACION))):
     return seguridad_clinica.PLANTILLAS
 
 
 @router.post("/clinica/revisar-prescripcion")
-def revisar(datos: RevisionIn, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*CLINICOS))):
+def revisar(datos: RevisionIn, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*CLINICOS_FORMACION))):
     """Alergias e interacciones en tiempo real mientras el médico formula."""
     p = db.get(Paciente, datos.paciente_id)
     if not p:

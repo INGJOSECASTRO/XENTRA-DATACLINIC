@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import CLINICOS, PERSONAL, requiere_rol
+from app.core.deps import CLINICOS_FORMACION, PERSONAL, requiere_rol
 from app.models import CIE10, Paciente, Usuario
 from app.schemas import CIE10Out, SugerenciaIn, SugerenciasOut
 from app.services import cie10 as catalogo
@@ -27,7 +27,7 @@ def obtener(codigo: str, db: Session = Depends(get_db), _: Usuario = Depends(req
 
 
 @router.post("/sugerir", response_model=SugerenciasOut)
-def sugerir(datos: SugerenciaIn, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*CLINICOS))):
+def sugerir(datos: SugerenciaIn, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*CLINICOS_FORMACION))):
     """Sugiere diagnósticos CIE-10 a partir del texto clínico (motivo, enfermedad actual, análisis)."""
     sexo = edad = None
     nombres: list[str] = []

@@ -24,7 +24,7 @@ from app.services.seguridad_clinica import eventos_sivigila
 
 router = APIRouter(prefix="/api", tags=["Reportes e indicadores"])
 TZ = ZoneInfo(settings.ZONA_HORARIA)
-GERENCIA = ("admin", "auditor")
+GERENCIA = ("admin", "auditor", "auditor_sistemas")  # indicadores agregados, sin identificar pacientes
 
 
 def _rango(desde: date | None, hasta: date | None) -> tuple[datetime, datetime]:

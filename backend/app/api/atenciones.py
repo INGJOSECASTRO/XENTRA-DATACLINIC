@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import CLINICOS, FACTURACION, LECTURA_HC, ip_cliente, requiere_rol
+from app.core.deps import CLINICOS, CLINICOS_FORMACION, FACTURACION, LECTURA_HC, MEDICOS, ip_cliente, requiere_rol
 from app.models import CIE10, Atencion, BloqueLedger, Diagnostico, NotaAclaratoria, Paciente, Prescripcion, Procedimiento, Usuario
 from app.schemas import AtencionCrear, AtencionGuardar, AtencionOut, AtencionResumen, NotaIn, NotaOut
 from app.services import historia, seguridad_clinica
@@ -66,6 +66,19 @@ def _aplicar(db: Session, a: Atencion, datos: AtencionGuardar, paciente: Pacient
     a.prescripciones = [Prescripcion(**r.model_dump()) for r in datos.prescripciones]
 
 
+def _puede_refrendar(a: Atencion, usuario: Usuario) -> bool:
+    """Un médico (docente) puede revisar, editar y firmar los borradores registrados por estudiantes."""
+    return usuario.rol in MEDICOS and a.profesional is not None and a.profesional.rol == "estudiante"
+
+
+@router.get("/refrendo/pendientes", response_model=list[AtencionResumen])
+def pendientes_refrendo(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*MEDICOS))):
+    """Borradores de internos y residentes que esperan revisión y firma del docente."""
+    q = select(Atencion).join(Usuario, Atencion.profesional_id == Usuario.id).where(
+        Atencion.estado == "borrador", Usuario.rol == "estudiante").order_by(Atencion.fecha_inicio)
+    return db.scalars(q).all()
+
+
 @router.get("", response_model=list[AtencionResumen])
 def listar(
     estado: str | None = None,
@@ -87,7 +100,7 @@ def listar(
 
 @router.post("", response_model=AtencionOut, status_code=201)
 def crear(datos: AtencionCrear, request: Request, db: Session = Depends(get_db),
-          usuario: Usuario = Depends(requiere_rol(*CLINICOS))):
+          usuario: Usuario = Depends(requiere_rol(*CLINICOS_FORMACION))):
     paciente = db.get(Paciente, datos.paciente_id)
     if not paciente:
         raise HTTPException(404, "Paciente no encontrado")
@@ -126,12 +139,12 @@ def detalle(atencion_id: uuid.UUID, request: Request, db: Session = Depends(get_
 
 @router.put("/{atencion_id}", response_model=AtencionOut)
 def actualizar(atencion_id: uuid.UUID, datos: AtencionGuardar, request: Request, db: Session = Depends(get_db),
-               usuario: Usuario = Depends(requiere_rol(*CLINICOS))):
+               usuario: Usuario = Depends(requiere_rol(*CLINICOS_FORMACION))):
     a = obtener(db, atencion_id)
     if a.estado == "firmada":
         raise HTTPException(409, "La atención está firmada y es inalterable. Use una nota aclaratoria.")
-    if a.profesional_id != usuario.id:
-        raise HTTPException(403, "Solo el profesional que abrió la atención puede editarla")
+    if a.profesional_id != usuario.id and not _puede_refrendar(a, usuario):
+        raise HTTPException(403, "Solo el profesional que abrió la atención (o su docente) puede editarla")
     _aplicar(db, a, datos, a.paciente)
     registrar_evento(db, accion="ATENCION_EDITADA", entidad="atencion", entidad_id=a.id,
                      usuario_id=usuario.id, ip=ip_cliente(request))
@@ -142,7 +155,7 @@ def actualizar(atencion_id: uuid.UUID, datos: AtencionGuardar, request: Request,
 
 @router.delete("/{atencion_id}", status_code=204)
 def eliminar_borrador(atencion_id: uuid.UUID, request: Request, db: Session = Depends(get_db),
-                      usuario: Usuario = Depends(requiere_rol(*CLINICOS))):
+                      usuario: Usuario = Depends(requiere_rol(*CLINICOS_FORMACION))):
     a = obtener(db, atencion_id)
     if a.estado == "firmada":
         raise HTTPException(409, "Una atención firmada no se puede eliminar")
@@ -156,18 +169,25 @@ def eliminar_borrador(atencion_id: uuid.UUID, request: Request, db: Session = De
 
 @router.post("/{atencion_id}/firmar", response_model=AtencionOut)
 def firmar(atencion_id: uuid.UUID, request: Request, tareas: BackgroundTasks, db: Session = Depends(get_db),
-           usuario: Usuario = Depends(requiere_rol(*CLINICOS))):
+           usuario: Usuario = Depends(requiere_rol(*CLINICOS_FORMACION))):
     a = obtener(db, atencion_id)
     if a.estado == "firmada":
         raise HTTPException(409, "La atención ya fue firmada")
-    if a.profesional_id != usuario.id:
+    if usuario.rol == "estudiante":
+        raise HTTPException(403, "Los estudiantes no firman: guarde el borrador para que su docente lo revise y refrende "
+                                 "(Decreto 2376 de 2010, relación docencia-servicio)")
+    refrendo = a.profesional_id != usuario.id
+    if refrendo and not _puede_refrendar(a, usuario):
         raise HTTPException(403, "Solo el profesional tratante puede firmar")
+    if refrendo:
+        a.supervisor_id = usuario.id  # el docente refrenda y asume la responsabilidad del registro
     if not a.diagnosticos:
         raise HTTPException(422, "Debe registrar al menos el diagnóstico principal antes de firmar")
     # 1) Sellar el contenido en el ledger  2) marcar la atención como firmada en un solo UPDATE
     # (después de firmada, PostgreSQL ya no permite modificar la fila).
-    bloque = registrar_evento(db, accion="ATENCION_FIRMADA", entidad="atencion", entidad_id=a.id,
-                              datos=historia.contenido_clinico(a), usuario_id=usuario.id, ip=ip_cliente(request))
+    bloque = registrar_evento(db, accion="ATENCION_REFRENDADA" if refrendo else "ATENCION_FIRMADA",
+                              entidad="atencion", entidad_id=a.id,
+                              datos=historia.contenido_sellado(a), usuario_id=usuario.id, ip=ip_cliente(request))
     historia.marcar_firmada(a)
     a.bloque_ledger_id = bloque.id
     eventos = seguridad_clinica.eventos_sivigila([d.codigo_cie10 for d in a.diagnosticos])

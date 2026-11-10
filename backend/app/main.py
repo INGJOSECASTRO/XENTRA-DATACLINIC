@@ -79,4 +79,4 @@ for modulo in (auth, pacientes, atenciones, cie10, rips, auditoria, administraci
 def salud():
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
-    return {"estado": "ok", "ia": settings.IA_PROVEEDOR}
+    return {"estado": "ok", "ia": settings.IA_PROVEEDOR, "portal_paciente": settings.PORTAL_PACIENTE_ACTIVO}

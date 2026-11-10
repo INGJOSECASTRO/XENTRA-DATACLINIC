@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.deps import ip_cliente, requiere_rol, usuario_actual
+from app.core.deps import ADMIN_GESTION, ROLES_CON_REGISTRO, ip_cliente, requiere_rol, usuario_actual
 from app.core.security import crear_token, decodificar_token, hash_password, validar_fortaleza, verificar_password
 from app.models import Usuario
 from app.schemas import CambioClave, MfaCodigo, MfaVerificar, Token, UsuarioCrear, UsuarioOut
@@ -49,6 +49,8 @@ def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Ses
     if not usuario or not usuario.activo or not verificar_password(form.password, usuario.hashed_password):
         _fallo(db, usuario, ip_cliente(request))
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Correo o contraseña incorrectos")
+    if usuario.rol == "paciente" and not settings.PORTAL_PACIENTE_ACTIVO:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "El portal del paciente no está habilitado en esta institución")
     if usuario.mfa_activo:
         # Paso 2: se entrega un token temporal que SOLO sirve para enviar el código TOTP.
         return Token(mfa_requerido=True, token_mfa=crear_token(str(usuario.id), usuario.rol, "mfa", 5),
@@ -109,7 +111,7 @@ def mfa_activar(datos: MfaCodigo, request: Request, db: Session = Depends(get_db
 
 @router.post("/mfa/desactivar/{usuario_id}", response_model=UsuarioOut)
 def mfa_desactivar(usuario_id: uuid.UUID, request: Request, db: Session = Depends(get_db),
-                   admin: Usuario = Depends(requiere_rol("admin"))):
+                   admin: Usuario = Depends(requiere_rol(*ADMIN_GESTION))):
     """Para usuarios que perdieron el celular (el administrador verifica su identidad)."""
     usuario = db.get(Usuario, usuario_id)
     if not usuario:
@@ -129,7 +131,10 @@ def cambiar_clave(datos: CambioClave, request: Request, db: Session = Depends(ge
         raise HTTPException(422, "La contraseña actual no es correcta")
     if error := validar_fortaleza(datos.nueva):
         raise HTTPException(422, error)
+    if verificar_password(datos.nueva, usuario.hashed_password):
+        raise HTTPException(422, "La nueva contraseña debe ser distinta de la actual")
     usuario.hashed_password = hash_password(datos.nueva)
+    usuario.debe_cambiar_clave = False
     registrar_evento(db, accion="CLAVE_CAMBIADA", entidad="usuario", entidad_id=usuario.id, usuario_id=usuario.id,
                      ip=ip_cliente(request))
     db.commit()
@@ -137,7 +142,8 @@ def cambiar_clave(datos: CambioClave, request: Request, db: Session = Depends(ge
 
 @router.get("/usuarios", response_model=list[UsuarioOut])
 def listar_usuarios(rol: str | None = None, db: Session = Depends(get_db),
-                    _: Usuario = Depends(requiere_rol("admin", "admisiones", "medico", "enfermeria", "facturacion"))):
+                    _: Usuario = Depends(requiere_rol("admin", "admin_tecnico", "admisiones", "medico", "enfermeria",
+                                                      "facturacion"))):
     q = select(Usuario).where(Usuario.rol != "paciente").order_by(Usuario.apellidos)
     if rol:
         q = q.where(Usuario.rol == rol)
@@ -146,16 +152,19 @@ def listar_usuarios(rol: str | None = None, db: Session = Depends(get_db),
 
 @router.post("/usuarios", response_model=UsuarioOut, status_code=201)
 def crear_usuario(
-    datos: UsuarioCrear, request: Request, db: Session = Depends(get_db), admin: Usuario = Depends(requiere_rol("admin"))
+    datos: UsuarioCrear, request: Request, db: Session = Depends(get_db),
+    admin: Usuario = Depends(requiere_rol(*ADMIN_GESTION))
 ):
     if error := validar_fortaleza(datos.password):
         raise HTTPException(422, error)
     if db.scalars(select(Usuario).where(Usuario.email == datos.email.lower())).first():
         raise HTTPException(409, "Ya existe un usuario con ese correo")
-    if datos.rol == "medico" and not datos.registro_profesional:
-        raise HTTPException(422, "El médico debe tener registro profesional (ReTHUS)")
+    if datos.rol in ROLES_CON_REGISTRO and not datos.registro_profesional:
+        raise HTTPException(422, "Este rol exige registro profesional (ReTHUS o tarjeta profesional) - Ley 1164 de 2007")
+    if datos.rol == "admin" and admin.rol != "admin":
+        raise HTTPException(403, "Solo un administrador con rol 'admin' puede crear otro 'admin' (evita escalar privilegios)")
     usuario = Usuario(**datos.model_dump(exclude={"password", "email"}), email=datos.email.lower(),
-                      hashed_password=hash_password(datos.password))
+                      hashed_password=hash_password(datos.password), debe_cambiar_clave=True)
     db.add(usuario)
     db.flush()
     registrar_evento(db, accion="USUARIO_CREADO", entidad="usuario", entidad_id=usuario.id,
@@ -166,12 +175,14 @@ def crear_usuario(
 
 @router.patch("/usuarios/{usuario_id}/estado", response_model=UsuarioOut)
 def cambiar_estado(usuario_id: uuid.UUID, activo: bool, request: Request, db: Session = Depends(get_db),
-                   admin: Usuario = Depends(requiere_rol("admin"))):
+                   admin: Usuario = Depends(requiere_rol(*ADMIN_GESTION))):
     usuario = db.get(Usuario, usuario_id)
     if not usuario:
         raise HTTPException(404, "Usuario no encontrado")
     if usuario.id == admin.id:
         raise HTTPException(400, "No puede desactivarse a sí mismo")
+    if usuario.rol == "admin" and admin.rol != "admin":
+        raise HTTPException(403, "Solo un 'admin' puede activar o desactivar otro 'admin'")
     usuario.activo = activo
     registrar_evento(db, accion="USUARIO_ACTIVADO" if activo else "USUARIO_DESACTIVADO", entidad="usuario",
                      entidad_id=usuario.id, usuario_id=admin.id, ip=ip_cliente(request))

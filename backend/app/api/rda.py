@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal, get_db
-from app.core.deps import LECTURA_HC, ip_cliente, requiere_rol
+from app.core.deps import AUDITORIA_SEGURIDAD, LECTURA_HC, ip_cliente, requiere_rol
 from app.models import Atencion, Paciente, Usuario
 from app.models_ext import RdaEnvio
 from app.services import rda
@@ -49,7 +49,7 @@ def generar_y_encolar(db: Session, tipo_entidad: str, objeto, tareas: Background
 
 
 @router.get("/resumen")
-def resumen(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("admin", "auditor", "medico"))):
+def resumen(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*AUDITORIA_SEGURIDAD, "medico"))):
     filas = db.execute(select(RdaEnvio.estado, func.count()).group_by(RdaEnvio.estado)).all()
     from app.core.config import settings
 
@@ -58,7 +58,7 @@ def resumen(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("ad
 
 
 @router.get("")
-def listar(estado: str | None = None, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("admin", "auditor"))):
+def listar(estado: str | None = None, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*AUDITORIA_SEGURIDAD))):
     q = select(RdaEnvio).order_by(RdaEnvio.generado_en.desc()).limit(300)
     if estado:
         q = q.where(RdaEnvio.estado == estado)
@@ -77,12 +77,12 @@ def documento(envio_id: uuid.UUID, db: Session = Depends(get_db), _: Usuario = D
 
 
 @router.post("/procesar")
-def procesar(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("admin", "auditor"))):
+def procesar(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*AUDITORIA_SEGURIDAD))):
     return rda.procesar_pendientes(db, forzar=True)
 
 
 @router.post("/{envio_id}/reintentar")
-def reintentar(envio_id: uuid.UUID, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("admin", "auditor"))):
+def reintentar(envio_id: uuid.UUID, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*AUDITORIA_SEGURIDAD))):
     e = db.get(RdaEnvio, envio_id)
     if not e:
         raise HTTPException(404, "RDA no encontrado")

@@ -43,8 +43,16 @@ def contenido_clinico(a: Atencion) -> dict:
     }
 
 
+def contenido_sellado(a: Atencion) -> dict:
+    """Contenido que se sella al firmar; con refrendo docente incluye quién asumió la responsabilidad."""
+    contenido = contenido_clinico(a)
+    if a.supervisor_id:
+        contenido["supervisor_id"] = str(a.supervisor_id)
+    return contenido
+
+
 def calcular_hash(a: Atencion) -> str:
-    return sha256(json_canonico(contenido_clinico(a)))
+    return sha256(json_canonico(contenido_sellado(a)))
 
 
 def marcar_firmada(a: Atencion) -> str:

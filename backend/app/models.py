@@ -46,6 +46,10 @@ class Rol(str, enum.Enum):
     FARMACIA = "farmacia"
     LABORATORIO = "laboratorio"
     PACIENTE = "paciente"
+    ADMIN_TECNICO = "admin_tecnico"
+    AUDITOR_SISTEMAS = "auditor_sistemas"
+    ESTUDIANTE = "estudiante"
+    AUXILIAR_LABORATORIO = "auxiliar_laboratorio"
 
 
 class EstadoAtencion(str, enum.Enum):
@@ -71,6 +75,7 @@ class Usuario(Base):
     paciente_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("pacientes.id"))  # solo rol "paciente" (portal)
     totp_secreto: Mapped[str | None] = mapped_column(String(64))
     mfa_activo: Mapped[bool] = mapped_column(Boolean, default=False)
+    debe_cambiar_clave: Mapped[bool] = mapped_column(Boolean, default=False)
     intentos_fallidos: Mapped[int] = mapped_column(Integer, default=0)
     bloqueado_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora_utc)
@@ -78,6 +83,12 @@ class Usuario(Base):
     @property
     def nombre_completo(self) -> str:
         return f"{self.nombres} {self.apellidos}"
+
+    @property
+    def mfa_obligatorio(self) -> bool:
+        from app.core.deps import roles_mfa_obligatorio
+
+        return self.rol in roles_mfa_obligatorio()
 
 
 class Paciente(Base):
@@ -129,6 +140,7 @@ class Atencion(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     paciente_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("pacientes.id"), index=True)
     profesional_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("usuarios.id"))
+    supervisor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("usuarios.id"))  # docente que refrenda (estudiantes)
     sede_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("sedes.id"))
     consecutivo: Mapped[int] = mapped_column(Integer)  # número de folio dentro de la HC del paciente
     fecha_inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora_utc)
@@ -165,7 +177,8 @@ class Atencion(Base):
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora_utc)
 
     paciente: Mapped[Paciente] = relationship(back_populates="atenciones")
-    profesional: Mapped[Usuario] = relationship()
+    profesional: Mapped[Usuario] = relationship(foreign_keys=[profesional_id])
+    supervisor: Mapped[Usuario | None] = relationship(foreign_keys=[supervisor_id])
     diagnosticos: Mapped[list["Diagnostico"]] = relationship(
         back_populates="atencion", cascade="all, delete-orphan", order_by="Diagnostico.orden"
     )

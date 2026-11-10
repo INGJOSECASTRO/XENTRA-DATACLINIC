@@ -3,7 +3,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import PERSONAL, requiere_rol
+from app.core.deps import AUDITORIA_SEGURIDAD, PERSONAL, requiere_rol
 from app.models import Atencion, BloqueLedger, Paciente, Usuario
 from app.schemas import BloqueOut
 from app.services.ledger import verificar_cadena
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/auditoria", tags=["Auditoría y ledger (blockcha
 
 @router.get("/ledger", response_model=list[BloqueOut])
 def bloques(entidad_id: str | None = None, accion: str | None = None, limite: int = Query(100, le=1000),
-            db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("auditor", "admin"))):
+            db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*AUDITORIA_SEGURIDAD))):
     q = select(BloqueLedger).order_by(BloqueLedger.id.desc()).limit(limite)
     if entidad_id:
         q = q.where(BloqueLedger.entidad_id == entidad_id)
@@ -23,7 +23,7 @@ def bloques(entidad_id: str | None = None, accion: str | None = None, limite: in
 
 
 @router.get("/verificar-cadena")
-def verificar(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("auditor", "admin"))):
+def verificar(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*AUDITORIA_SEGURIDAD))):
     return verificar_cadena(db)
 
 
@@ -40,7 +40,7 @@ def estadisticas(db: Session = Depends(get_db), _: Usuario = Depends(requiere_ro
 
 
 @router.post("/anclar")
-def anclar_ledger(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("auditor", "admin"))):
+def anclar_ledger(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*AUDITORIA_SEGURIDAD))):
     from app.services.anclaje import anclar
 
     try:
@@ -54,7 +54,7 @@ def anclar_ledger(db: Session = Depends(get_db), _: Usuario = Depends(requiere_r
 
 
 @router.get("/anclajes")
-def anclajes(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("auditor", "admin"))):
+def anclajes(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*AUDITORIA_SEGURIDAD))):
     from app.services.anclaje import verificar_anclas
 
     return verificar_anclas(db)

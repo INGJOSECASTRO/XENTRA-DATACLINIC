@@ -12,6 +12,10 @@ os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL", f"sqlite:///{_r
 os.environ["CARGAR_DATOS_DEMO"] = "true"
 os.environ["IA_PROVEEDOR"] = "local"
 os.environ["ADMIN_PASSWORD"] = "Admin12345*"
+# Las pruebas históricas usan el portal; los controles nuevos se prueban en test_seguridad_roles.py
+os.environ["PORTAL_PACIENTE_ACTIVO"] = "true"
+os.environ["CAMBIO_CLAVE_PRIMER_INGRESO"] = "false"
+os.environ["MFA_OBLIGATORIO_ROLES"] = ""
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

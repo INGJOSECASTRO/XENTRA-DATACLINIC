@@ -40,6 +40,10 @@ def _mi_paciente(db: Session, usuario: Usuario) -> Paciente:
 def crear_acceso(paciente_id: uuid.UUID, request: Request, db: Session = Depends(get_db),
                  admin: Usuario = Depends(requiere_rol("admisiones", "admin"))):
     """Crea el usuario del portal. Devuelve una clave temporal UNA sola vez (entréguela de forma segura)."""
+    from app.core.config import settings
+
+    if not settings.PORTAL_PACIENTE_ACTIVO:
+        raise HTTPException(403, "El portal del paciente está deshabilitado (PORTAL_PACIENTE_ACTIVO=false)")
     p = db.get(Paciente, paciente_id)
     if not p:
         raise HTTPException(404, "Paciente no encontrado")

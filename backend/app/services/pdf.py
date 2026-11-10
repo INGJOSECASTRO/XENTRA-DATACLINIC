@@ -170,6 +170,11 @@ def pdf_atencion(a, edad: int) -> bytes:
         doc.seccion("Procedimientos", "\n".join(f"{x.cod_cups} {x.descripcion}" for x in a.procedimientos))
     for n in a.notas_aclaratorias:
         doc.seccion(f"Nota aclaratoria {fecha(n.creado_en)} - {n.autor.nombre_completo}", n.texto)
+    if a.supervisor:
+        doc.seccion("Registro de estudiante refrendado por el docente",
+                    f"Registró: {prof.nombre_completo} (estudiante, {prof.registro_profesional or 'sin código'}). "
+                    f"Revisó y firmó: {a.supervisor.nombre_completo}, reg. {a.supervisor.registro_profesional or '-'}.")
+        prof = a.supervisor
     doc.firma(prof.nombre_completo, f"{prof.especialidad or prof.rol} - Reg. {prof.registro_profesional or '-'}",
               a.hash_contenido, a.firmada_en)
     return doc.bytes()

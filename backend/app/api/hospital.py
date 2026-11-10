@@ -87,19 +87,22 @@ def avanzar(triage_id: uuid.UUID, accion: str, request: Request, atencion_id: uu
 
 # ============================================================================ CAMAS
 @router.get("/camas", response_model=list[CamaOut])
-def camas(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*CLINICOS, "admisiones", "auditor"))):
+def camas(db: Session = Depends(get_db),
+          usuario: Usuario = Depends(requiere_rol(*CLINICOS, "admisiones", "auditor", "admin_tecnico"))):
     activas = {h.cama_id: h for h in db.scalars(select(Hospitalizacion).where(Hospitalizacion.estado == "activa")).all()}
     salida = []
     for c in db.scalars(select(Cama).order_by(Cama.servicio, Cama.codigo)).all():
         out = CamaOut.model_validate(c)
         if h := activas.get(c.id):
-            out.paciente, out.hospitalizacion_id = h.paciente.nombre_completo, h.id
+            # Sistemas ve ocupación, no la identidad del paciente (acceso restringido - Ley 1581)
+            out.paciente = "Ocupada" if usuario.rol == "admin_tecnico" else h.paciente.nombre_completo
+            out.hospitalizacion_id = None if usuario.rol == "admin_tecnico" else h.id
         salida.append(out)
     return salida
 
 
 @router.post("/camas", response_model=CamaOut, status_code=201)
-def crear_cama(datos: CamaIn, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("admin"))):
+def crear_cama(datos: CamaIn, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("admin", "admin_tecnico"))):
     if db.scalars(select(Cama).where(Cama.codigo == datos.codigo)).first():
         raise HTTPException(409, "Ya existe una cama con ese código")
     c = Cama(**datos.model_dump())
@@ -110,7 +113,7 @@ def crear_cama(datos: CamaIn, db: Session = Depends(get_db), _: Usuario = Depend
 
 @router.patch("/camas/{cama_id}", response_model=CamaOut)
 def estado_cama(cama_id: uuid.UUID, estado: str, db: Session = Depends(get_db),
-                _: Usuario = Depends(requiere_rol("admin", "enfermeria"))):
+                _: Usuario = Depends(requiere_rol("admin", "admin_tecnico", "enfermeria"))):
     c = db.get(Cama, cama_id)
     if not c or estado not in ("disponible", "mantenimiento"):
         raise HTTPException(422, "Cama o estado inválido")

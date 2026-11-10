@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     ZONA_HORARIA: str = "America/Bogota"
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:8080"
     CARGAR_DATOS_DEMO: bool = True
+    # Controles de acceso (protocolos de seguridad)
+    PORTAL_PACIENTE_ACTIVO: bool = False  # la institución decide si los pacientes ingresan a la plataforma
+    CAMBIO_CLAVE_PRIMER_INGRESO: bool = True  # clave temporal obligatoria de cambiar
+    MFA_OBLIGATORIO_ROLES: str = ""  # ej. "admin,admin_tecnico,auditor,auditor_sistemas,medico,facturacion"
     # true: crea tablas al arrancar (desarrollo/pruebas). En producción: false y se usa Alembic (servicio "migrate").
     AUTO_CREAR_TABLAS: bool = True
 

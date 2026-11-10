@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.deps import PERSONAL, ip_cliente, requiere_rol, usuario_actual
+from app.core.deps import ADMIN_GESTION, AUDITORIA_SEGURIDAD, PERSONAL, es_admin, ip_cliente, requiere_rol, usuario_actual
 from app.models import Atencion, BloqueLedger, Usuario
 from app.models_ext import AnclajeLedger, AvisoSistema, Cita, Hospitalizacion, RdaEnvio, Ticket
 from app.services.ledger import a_utc, registrar_evento
@@ -46,7 +46,7 @@ def _ultimo_respaldo() -> dict:
 
 
 @router.get("/estado")
-def estado(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("admin", "auditor"))):
+def estado(db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*AUDITORIA_SEGURIDAD))):
     t0 = time.perf_counter()
     db.execute(text("SELECT 1"))
     latencia = round((time.perf_counter() - t0) * 1000, 1)
@@ -101,7 +101,7 @@ def avisos(db: Session = Depends(get_db), _: Usuario = Depends(usuario_actual)):
 
 
 @router.post("/avisos", status_code=201)
-def crear_aviso(datos: AvisoIn, db: Session = Depends(get_db), admin: Usuario = Depends(requiere_rol("admin"))):
+def crear_aviso(datos: AvisoIn, db: Session = Depends(get_db), admin: Usuario = Depends(requiere_rol(*ADMIN_GESTION))):
     a = AvisoSistema(nivel=datos.nivel, mensaje=datos.mensaje, desde=datos.desde or datetime.now(timezone.utc),
                      hasta=datos.hasta, creado_por=admin.id)
     db.add(a)
@@ -110,7 +110,7 @@ def crear_aviso(datos: AvisoIn, db: Session = Depends(get_db), admin: Usuario = 
 
 
 @router.delete("/avisos/{aviso_id}", status_code=204)
-def quitar_aviso(aviso_id: int, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol("admin"))):
+def quitar_aviso(aviso_id: int, db: Session = Depends(get_db), _: Usuario = Depends(requiere_rol(*ADMIN_GESTION))):
     a = db.get(AvisoSistema, aviso_id)
     if a:
         a.hasta = datetime.now(timezone.utc)
@@ -148,7 +148,7 @@ def tickets(estado: str | None = None, db: Session = Depends(get_db), usuario: U
     q = select(Ticket).order_by(Ticket.id.desc()).limit(300)
     if estado:
         q = q.where(Ticket.estado == estado)
-    if usuario.rol != "admin":
+    if not es_admin(usuario):
         q = q.where(Ticket.creado_por == usuario.id)
     return [_ticket(t) for t in db.scalars(q).all()]
 
@@ -173,9 +173,9 @@ def crear_ticket(datos: TicketIn, request: Request, db: Session = Depends(get_db
 def actualizar_ticket(ticket_id: int, datos: TicketAccion, db: Session = Depends(get_db),
                       usuario: Usuario = Depends(requiere_rol(*PERSONAL))):
     t = db.get(Ticket, ticket_id)
-    if not t or (usuario.rol != "admin" and t.creado_por != usuario.id):
+    if not t or (not es_admin(usuario) and t.creado_por != usuario.id):
         raise HTTPException(404, "Ticket no encontrado")
-    if (datos.estado or datos.asignado_a or datos.solucion) and usuario.rol != "admin":
+    if (datos.estado or datos.asignado_a or datos.solucion) and not es_admin(usuario):
         raise HTTPException(403, "Solo soporte (administrador) cambia el estado o la asignación")
     if datos.comentario:
         t.comentarios = [*t.comentarios, {"autor": usuario.nombre_completo, "fecha": datetime.now(timezone.utc).isoformat(),
