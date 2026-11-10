@@ -53,8 +53,7 @@ function salir() {
   <div v-else class="marco">
     <aside>
       <div class="marca">
-        <svg viewBox="0 0 32 32" width="28" height="28"><rect width="32" height="32" rx="7" fill="#fff" /><path d="M13 7h6v6h6v6h-6v6h-6v-6H7v-6h6z" fill="#0f766e" /></svg>
-        <div><strong>XENTRA</strong><small>DATACLINIC</small></div>
+        <img src="/logo-menu.svg" alt="XENTRA DATACLINIC" height="46" />
       </div>
       <nav>
         <RouterLink v-for="m in visibles" :key="m.a" :to="m.a" :class="{ activo: m.a === '/' ? route.path === '/' : route.path.startsWith(m.a) }">
