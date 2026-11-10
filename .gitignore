@@ -23,3 +23,6 @@ dist/
 *.sqlite3
 *.db
 backups/
+
+# Capturas de pruebas e2e fallidas
+fallo*.png
