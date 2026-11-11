@@ -21,6 +21,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if settings.es_produccion and (problemas := settings.problemas_produccion()):
+        for p in problemas:
+            logging.critical("PRODUCCIÓN INSEGURA: %s", p)
+        raise RuntimeError("XENTRA no arranca en ENTORNO=produccion con configuración insegura. Corrija el .env "
+                           "(ver docs/15-paso-a-produccion.md) o ejecute scripts/preparar_produccion.py")
     if settings.AUTO_CREAR_TABLAS:  # desarrollo y pruebas; en producción las tablas las crea Alembic
         Base.metadata.create_all(engine)
         instalar_triggers(engine)
@@ -34,6 +39,10 @@ app = FastAPI(
     description="Historia Clínica Electrónica y gestión hospitalaria - normatividad colombiana.",
     version="0.1.0",
     lifespan=lifespan,
+    # En producción no se publica la documentación técnica de la API (reduce información para un atacante)
+    docs_url=None if settings.es_produccion else "/docs",
+    redoc_url=None if settings.es_produccion else "/redoc",
+    openapi_url=None if settings.es_produccion else "/openapi.json",
 )
 
 app.add_middleware(

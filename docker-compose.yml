@@ -1,8 +1,16 @@
 # XENTRA DATACLINIC
 #   Desarrollo / pruebas:  docker compose up -d --build
 #   Producción (HTTPS):    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Registros (logs) con tamaño máximo: en producción evita que llenen el disco del servidor
+x-registros: &registros
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   db:
+    logging: *registros
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -25,6 +33,7 @@ services:
 
   # Aplica las migraciones (Alembic) con el usuario dueño y termina.
   migrate:
+    logging: *registros
     build: ./backend
     env_file: .env
     environment:
@@ -35,6 +44,7 @@ services:
         condition: service_healthy
 
   backend:
+    logging: *registros
     build: ./backend
     restart: unless-stopped
     env_file: .env
@@ -55,6 +65,7 @@ services:
 
   # Sin dependencia del backend: la aplicación abre y muestra un aviso claro aunque la API falle.
   frontend:
+    logging: *registros
     build: ./frontend
     restart: unless-stopped
     ports:
@@ -62,6 +73,7 @@ services:
 
   # Respaldo diario comprimido (formato custom de pg_dump) en ./backups, con rotación.
   respaldo:
+    logging: *registros
     image: postgres:16-alpine
     restart: unless-stopped
     environment:

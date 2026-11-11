@@ -32,7 +32,7 @@ def inicializar(db: Session) -> None:
     if not db.scalars(select(Usuario).where(Usuario.email == settings.ADMIN_EMAIL.lower())).first():
         db.add(Usuario(tipo_documento="CC", numero_documento="0", nombres="Administrador", apellidos="Sistema",
                        email=settings.ADMIN_EMAIL.lower(), hashed_password=hash_password(settings.ADMIN_PASSWORD),
-                       rol="admin"))
+                       rol="admin", debe_cambiar_clave=True))
         db.commit()
         log.info("Usuario administrador creado: %s", settings.ADMIN_EMAIL)
 

@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     APP_NOMBRE: str = "XENTRA DATACLINIC"
+    # desarrollo | produccion. En "produccion" el servidor NO arranca si detecta claves por defecto o datos demo.
+    ENTORNO: str = "desarrollo"
     DATABASE_URL: str = "postgresql+psycopg://xentra:xentra@localhost:5432/xentra_hce"
 
     SECRET_KEY: str = "dev-inseguro-cambiar-esta-clave-antes-de-produccion"
@@ -57,6 +59,31 @@ class Settings(BaseSettings):
     MFA_OBLIGATORIO_ROLES: str = ""  # ej. "admin,admin_tecnico,auditor,auditor_sistemas,medico,facturacion"
     # true: crea tablas al arrancar (desarrollo/pruebas). En producción: false y se usa Alembic (servicio "migrate").
     AUTO_CREAR_TABLAS: bool = True
+
+    @property
+    def es_produccion(self) -> bool:
+        return self.ENTORNO.strip().lower() == "produccion"
+
+    def problemas_produccion(self) -> list[str]:
+        """Condiciones que hacen INSEGURO operar con pacientes reales. En producción impiden el arranque."""
+        def debil(valor: str) -> bool:
+            v = valor or ""
+            return len(v) < 32 or "CAMBIAR" in v.upper() or v.startswith("dev-")
+
+        problemas = []
+        if debil(self.SECRET_KEY):
+            problemas.append("SECRET_KEY es la de ejemplo o tiene menos de 32 caracteres")
+        if debil(self.LEDGER_HMAC_KEY):
+            problemas.append("LEDGER_HMAC_KEY es la de ejemplo o tiene menos de 32 caracteres")
+        if "CAMBIAR" in self.DATABASE_URL.upper():
+            problemas.append("La clave de la base de datos (DATABASE_URL) es la de ejemplo")
+        if self.ADMIN_PASSWORD in ("Admin123*", "Admin12345*") or "CAMBIAR" in self.ADMIN_PASSWORD.upper():
+            problemas.append("ADMIN_PASSWORD es la de ejemplo")
+        if self.CARGAR_DATOS_DEMO:
+            problemas.append("CARGAR_DATOS_DEMO=true: crearía usuarios con la clave pública Demo12345*")
+        if self.AUTO_CREAR_TABLAS:
+            problemas.append("AUTO_CREAR_TABLAS=true: en producción las tablas las crea Alembic")
+        return problemas
 
     @property
     def cors_lista(self) -> list[str]:

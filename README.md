@@ -102,6 +102,7 @@ Usuarios de demostración (solo con `CARGAR_DATOS_DEMO=true`), todos con la clav
 | 12 | [Despliegue en su propio equipo como servidor](docs/12-despliegue-servidor-propio.md) | Red local, acceso remoto privado (Tailscale) e internet con dominio y HTTPS (Cloudflare Tunnel) |
 | 13 | [HCE privada por VPN (WireGuard)](docs/13-hce-privada-vpn.md) | Acceso solo con perfil de VPN, sin publicar la historia clínica en internet; 100 % código abierto |
 | 14 | [El código explicado desde cero](docs/14-codigo-explicado-desde-cero.md) | Para principiantes: estructura de carpetas, cada tecnología y por qué, el viaje de un clic, seguridad, pruebas y cómo se construyó |
+| 15 | [Paso a producción](docs/15-paso-a-produccion.md) | Requisitos legales, preparación del .env con claves aleatorias, arranque, verificación, día del arranque y vuelta atrás |
 
 ## Estructura del proyecto
 

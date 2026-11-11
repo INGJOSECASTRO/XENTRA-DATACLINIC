@@ -91,8 +91,9 @@ def test_auxiliar_laboratorio_no_valida(client, admin, medico, jose):
 
 
 def test_cambio_de_clave_obligatorio(client, admin, monkeypatch):
-    monkeypatch.setattr(settings, "CAMBIO_CLAVE_PRIMER_INGRESO", True)
     h = crear(client, admin, "nuevo.ingreso@xentra.co", "admisiones", doc="106")
+    # Se activa después de crear: el admin de pruebas también tiene clave inicial y quedaría bloqueado
+    monkeypatch.setattr(settings, "CAMBIO_CLAVE_PRIMER_INGRESO", True)
     yo = client.get("/api/auth/yo", headers=h).json()
     assert yo["debe_cambiar_clave"] is True
     bloqueado = client.get("/api/pacientes", headers=h)

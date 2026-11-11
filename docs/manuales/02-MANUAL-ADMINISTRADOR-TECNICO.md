@@ -185,6 +185,8 @@ Genere valores aleatorios con: `python -c "import secrets; print(secrets.token_u
 
 ## 5. Primer arranque: lista de verificación
 
+> **Para producción** siga `docs/15-paso-a-produccion.md`: genere el `.env` con `scripts/preparar_produccion.py` (claves aleatorias, `ENTORNO=produccion`) y compruebe todo con `docker compose exec backend python -m app.verificar_produccion`. Con `ENTORNO=produccion`, el backend **se niega a arrancar** si detecta claves de ejemplo o datos demo.
+
 - [ ] Todas las claves `CAMBIAR` reemplazadas; `.env` guardado en el gestor de secretos.
 - [ ] `CARGAR_DATOS_DEMO=false` en producción.
 - [ ] Ingreso con `admin@xentra.co` y cambio inmediato de la contraseña (*Mi cuenta y seguridad*).

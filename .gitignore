@@ -12,7 +12,12 @@ dist/
 
 # Secretos y entornos (NUNCA subir al repositorio)
 .env
+.env.*
+!.env.example
 *.env.local
+# Claves temporales del personal generadas por app.crear_usuarios
+credenciales*.csv
+usuarios.csv
 
 # Editor / SO
 .vscode/
